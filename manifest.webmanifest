@@ -1,0 +1,19 @@
+{
+  "id": "./",
+  "name": "Closet Studio",
+  "short_name": "Closet",
+  "description": "Your wardrobe, in color. Build a closet and create outfits anywhere.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fff6fa",
+  "theme_color": "#fff6fa",
+  "icons": [
+    {
+      "src": "./closet-cover.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title description">
+  <title id="title">Closet Studio</title>
+  <desc id="description">A cherry-pink blouse and sea-glass trousers on a petal-pink wardrobe backdrop.</desc>
+  <rect width="512" height="512" rx="112" fill="#f6dce8"/>
+  <circle cx="394" cy="112" r="54" fill="#f4d66f"/>
+  <path d="M256 65c0-26 39-26 39 0 0 17-17 18-23 29" fill="none" stroke="#352432" stroke-width="13" stroke-linecap="round"/>
+  <path d="m272 99-133 76 117 69 137-69-75-43" fill="none" stroke="#352432" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m173 178-60 34-39 69 53 29 34-45v103h173V265l34 45 53-29-39-69-60-34-42 37h-63z" fill="#e74775" stroke="#352432" stroke-width="11" stroke-linejoin="round"/>
+  <path d="m214 178 42 38 42-38-22-22h-40z" fill="#fffdfd" stroke="#352432" stroke-width="9" stroke-linejoin="round"/>
+  <path d="M256 218v117" fill="none" stroke="#fffdfd" stroke-width="8" stroke-linecap="round" opacity=".75"/>
+  <path d="M181 392h150l-16 73h-54l-11-45-12 45h-54z" fill="#71b9b5" stroke="#352432" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M181 407h150M250 420v43" fill="none" stroke="#fffdfd" stroke-width="7" stroke-linecap="round" opacity=".7"/>
+  <path d="m110 112 9 22 22 9-22 9-9 22-9-22-22-9 22-9z" fill="#fffdfd"/>
+</svg>
