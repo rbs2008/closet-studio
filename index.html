@@ -155,6 +155,13 @@
     .image-source-option strong, .image-source-option small { display: block; }
     .image-source-option strong { font-size: 12px; }
     .image-source-option small { margin-top: 2px; color: var(--muted); font-size: 10px; }
+      .processing-backdrop { position: fixed; inset: 0; z-index: 50; display: none; place-items: center; padding: 18px; background: rgba(53,36,50,.46); backdrop-filter: blur(4px); }
+      .processing-backdrop.open { display: grid; }
+      .processing-card { width: min(340px, 100%); padding: 25px; border: 1px solid #edcfdd; border-radius: 10px; background: var(--white); box-shadow: var(--shadow); text-align: center; }
+      .processing-spinner { width: 30px; height: 30px; margin: 0 auto 13px; border: 3px solid #f1d7e2; border-top-color: var(--red); border-radius: 50%; animation: spin .8s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .processing-title { color: var(--ink); font: 20px/1.2 var(--serif); }
+      .processing-status { margin: 8px 0 0; color: var(--muted); font-size: 11px; }
     .privacy-backdrop { position: fixed; inset: 0; z-index: 30; display: none; align-items: center; justify-content: center; padding: 18px; background: rgba(53,36,50,.48); backdrop-filter: blur(5px); }
     .privacy-backdrop.open { display: flex; animation: fade .18s; }
     .privacy-dialog { width: min(520px, 100%); max-height: min(90vh, 760px); overflow: auto; padding: 28px; border: 1px solid #edcfdd; border-radius: 10px; background: var(--white); box-shadow: var(--shadow); }
@@ -337,7 +344,7 @@
       <div class="privacy-kicker">A note about your closet</div>
       <h2 id="privacy-title">Your clothes stay yours.</h2>
       <p class="privacy-copy" id="privacy-copy">Before using Closet Studio, please review how the app handles your wardrobe information.</p>
-      <div class="privacy-summary">Your photos, item details, and optional account profile stay in this app's local storage on this device. There is no online account, upload service, advertising, or analytics.</div>
+      <div class="privacy-summary">Your photos stay on this device. First-time photo cleanup downloads an on-device model (about 94 MB on supported devices) from Hugging Face and its runtime from jsDelivr; the photo itself is not uploaded.</div>
       <a class="privacy-link" href="./privacy-policy.html" target="_blank" rel="noopener">Read the full Privacy Policy</a>
       <label class="privacy-checkbox" id="privacy-checkbox-label"><input id="privacy-checkbox" type="checkbox"><span>I have read and agree to the Privacy Policy.</span></label>
       <div class="privacy-actions" id="privacy-actions"><button class="privacy-decline" id="privacy-decline" type="button">I don't agree</button><button class="primary-btn" id="privacy-accept" type="button" disabled>Agree &amp; continue</button></div>
@@ -362,6 +369,13 @@
         <p class="account-delete-copy">This permanently deletes your local account profile and all saved wardrobe items and photos from this device. This cannot be undone. Your separate privacy-policy consent record will remain.</p>
         <div class="account-actions"><button class="quiet-btn" id="account-delete-cancel" type="button">Keep account</button><button class="primary-btn" id="account-delete-confirm-button" type="button">Delete account &amp; wardrobe</button></div>
       </div>
+    </section>
+  </div>
+  <div class="processing-backdrop" id="image-processing-backdrop" role="status" aria-live="polite" aria-atomic="true">
+    <section class="processing-card">
+      <div class="processing-spinner" aria-hidden="true"></div>
+      <div class="processing-title" id="image-processing-title">Isolating your clothing</div>
+      <p class="processing-status" id="image-processing-status">Preparing photo on this device...</p>
     </section>
   </div>
   <input id="file-input" type="file" accept="image/*" hidden>
@@ -405,9 +419,12 @@
     ];
     const STORAGE_KEY = 'closet-studio-items-v1';
     const ACCOUNT_KEY = 'closet-studio-local-account-v1';
-    const PRIVACY_VERSION = '2026-10-12-2';
+    const PRIVACY_VERSION = '2026-10-12-3';
     const PRIVACY_KEY = 'closet-studio-privacy-consent';
     const state = { items: [], category: 'All pieces', weather: 'all', mode: 'complementary', query: '', outfit: null, editingId: null, pendingImage: null, temperatureUnit: 'C', account: null, initialized: false };
+    const TRANSFORMERS_MODULE_URL = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.1';
+    const BACKGROUND_REMOVAL_MODEL = 'studioludens/birefnet-lite-512';
+    let backgroundRemovalPipelinePromise = null;
     const $ = (selector) => document.querySelector(selector);
     const $$ = (selector) => [...document.querySelectorAll(selector)];
 
@@ -633,164 +650,98 @@
       event.target.value = '';
       if (!file) return;
       if (!file.type.startsWith('image/')) { toast('Choose an image file to add a piece.'); return; }
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const image = await compressImage(reader.result);
-        const color = await sampleImageColor(image) || '#d86d55';
-        state.pendingImage = image;
+      $('#image-processing-title').textContent = 'Isolating your clothing';
+      $('#image-processing-status').textContent = 'Preparing photo on this device...';
+      $('#image-processing-backdrop').classList.add('open');
+      try {
+        const prepared = await prepareClothingPhoto(file);
+        $('#image-processing-backdrop').classList.remove('open');
+        state.pendingImage = prepared.image;
         state.editingId = null;
         $('#modal-title').textContent = 'Add a piece';
-        $('#preview-image').src = image;
+        $('#preview-image').src = prepared.image;
         $('#item-name').value = file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ');
         $('#item-type').value = 'top';
-        $('#item-color').value = color;
-        $('#color-name').textContent = describeColor(color);
+        $('#item-color').value = prepared.color || '#d86d55';
+        $('#color-name').textContent = describeColor($('#item-color').value);
         $$('input[name="season"]').forEach(input => input.checked = input.value === seasonForTemperature(currentTemperatureCelsius()));
         $('#delete-item').hidden = true;
         $('#modal-backdrop').classList.add('open');
         $('#item-name').focus();
-      };
-      reader.readAsDataURL(file);
+      } catch (error) {
+        console.error('Background removal failed', error);
+        $('#image-processing-backdrop').classList.remove('open');
+        toast('Could not isolate the clothing. Check your connection and try again.');
+      }
     }
-    function compressImage(source) {
-      return new Promise(resolve => {
+    function getBackgroundRemovalPipeline() {
+      if (!backgroundRemovalPipelinePromise) {
+        backgroundRemovalPipelinePromise = (async () => {
+          const { pipeline } = await import(TRANSFORMERS_MODULE_URL);
+          const device = navigator.gpu ? 'webgpu' : 'wasm';
+          $('#image-processing-status').textContent = device === 'webgpu'
+            ? 'Loading the on-device model. First use downloads about 94 MB; stay online.'
+            : 'Loading the on-device model for CPU processing. This may take a while; stay online.';
+          const options = { device, dtype: device === 'webgpu' ? 'fp16' : 'fp32' };
+          try { return await pipeline('background-removal', BACKGROUND_REMOVAL_MODEL, options); }
+          catch (error) {
+            if (device !== 'webgpu') throw error;
+            $('#image-processing-status').textContent = 'Switching to CPU processing...';
+            return pipeline('background-removal', BACKGROUND_REMOVAL_MODEL, { device: 'wasm', dtype: 'fp32' });
+          }
+        })().catch(error => { backgroundRemovalPipelinePromise = null; throw error; });
+      }
+      return backgroundRemovalPipelinePromise;
+    }
+    function loadImageFile(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
         const image = new Image();
-        image.onload = () => {
-          try {
-            const scale = Math.min(1, 1200 / Math.max(image.width, image.height));
-            const width = Math.max(1, Math.round(image.width * scale));
-            const height = Math.max(1, Math.round(image.height * scale));
-            const sourceCanvas = document.createElement('canvas');
-            sourceCanvas.width = width;
-            sourceCanvas.height = height;
-            const sourceContext = sourceCanvas.getContext('2d', { willReadFrequently: true });
-            sourceContext.drawImage(image, 0, 0, width, height);
-            const imageData = sourceContext.getImageData(0, 0, width, height);
-            const pixels = imageData.data;
-            const cornerSize = Math.min(16, width, height);
-            const sampleCorner = (left, top) => {
-              const channels = [[], [], []];
-              for (let y = top; y < top + cornerSize; y++) {
-                for (let x = left; x < left + cornerSize; x++) {
-                  const offset = (y * width + x) * 4;
-                  if (pixels[offset + 3] < 16) continue;
-                  channels[0].push(pixels[offset]);
-                  channels[1].push(pixels[offset + 1]);
-                  channels[2].push(pixels[offset + 2]);
-                }
-              }
-              return channels.map(values => {
-                if (!values.length) return 255;
-                values.sort((a, b) => a - b);
-                return values[Math.floor(values.length / 2)];
-              });
-            };
-            const backgrounds = [
-              sampleCorner(0, 0),
-              sampleCorner(width - cornerSize, 0),
-              sampleCorner(0, height - cornerSize),
-              sampleCorner(width - cornerSize, height - cornerSize)
-            ];
-            const background = [0, 1, 2].map(channel => {
-              const values = backgrounds.map(color => color[channel]).sort((a, b) => a - b);
-              return Math.round((values[1] + values[2]) / 2);
-            });
-            const thresholdSquared = 58 * 58;
-            const isBackground = index => {
-              const offset = index * 4;
-              if (pixels[offset + 3] < 16) return true;
-              const red = pixels[offset] - background[0];
-              const green = pixels[offset + 1] - background[1];
-              const blue = pixels[offset + 2] - background[2];
-              return red * red + green * green + blue * blue <= thresholdSquared;
-            };
-            const total = width * height;
-            const removed = new Uint8Array(total);
-            const queue = new Int32Array(total);
-            let queueEnd = 0;
-            const addBackground = index => {
-              if (removed[index] || !isBackground(index)) return;
-              removed[index] = 1;
-              queue[queueEnd++] = index;
-            };
-            for (let x = 0; x < width; x++) {
-              addBackground(x);
-              addBackground((height - 1) * width + x);
-            }
-            for (let y = 1; y < height - 1; y++) {
-              addBackground(y * width);
-              addBackground(y * width + width - 1);
-            }
-            for (let queueIndex = 0; queueIndex < queueEnd; queueIndex++) {
-              const index = queue[queueIndex];
-              const x = index % width;
-              const y = (index - x) / width;
-              if (x > 0) addBackground(index - 1);
-              if (x + 1 < width) addBackground(index + 1);
-              if (y > 0) addBackground(index - width);
-              if (y + 1 < height) addBackground(index + width);
-            }
-            let left = width, top = height, right = -1, bottom = -1;
-            for (let y = 0; y < height; y++) {
-              for (let x = 0; x < width; x++) {
-                const index = y * width + x;
-                if (removed[index] || pixels[index * 4 + 3] < 16) continue;
-                left = Math.min(left, x);
-                top = Math.min(top, y);
-                right = Math.max(right, x);
-                bottom = Math.max(bottom, y);
-              }
-            }
-            if (right < left || bottom < top) {
-              left = 0; top = 0; right = width - 1; bottom = height - 1;
-            }
-            for (let index = 0; index < total; index++) {
-              if (removed[index]) pixels[index * 4 + 3] = 0;
-            }
-            sourceContext.putImageData(imageData, 0, 0);
-            const padding = Math.round(Math.max(right - left + 1, bottom - top + 1) * .06);
-            left = Math.max(0, left - padding);
-            top = Math.max(0, top - padding);
-            right = Math.min(width - 1, right + padding);
-            bottom = Math.min(height - 1, bottom + padding);
-            const cropWidth = right - left + 1;
-            const cropHeight = bottom - top + 1;
-            const output = document.createElement('canvas');
-            output.width = 720;
-            output.height = 720;
-            const outputContext = output.getContext('2d');
-            outputContext.fillStyle = '#ffffff';
-            outputContext.fillRect(0, 0, output.width, output.height);
-            const fit = Math.min(600 / cropWidth, 600 / cropHeight);
-            const drawWidth = cropWidth * fit;
-            const drawHeight = cropHeight * fit;
-            outputContext.drawImage(sourceCanvas, left, top, cropWidth, cropHeight, (720 - drawWidth) / 2, (720 - drawHeight) / 2, drawWidth, drawHeight);
-            resolve(output.toDataURL('image/jpeg', .88));
-          } catch { resolve(source); }
-        };
-        image.onerror = () => resolve(source);
-        image.src = source;
+        image.onload = () => { URL.revokeObjectURL(url); resolve(image); };
+        image.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read this photo.')); };
+        image.src = url;
       });
     }
-    function sampleImageColor(source) {
-      return new Promise(resolve => {
-        const image = new Image();
-        image.onload = () => {
-          try {
-            const canvas = document.createElement('canvas'); canvas.width = 24; canvas.height = 24;
-            const context = canvas.getContext('2d', { willReadFrequently: true }); context.drawImage(image, 0, 0, 24, 24);
-            const pixels = context.getImageData(0, 0, 24, 24).data; let r = 0, g = 0, b = 0, count = 0;
-            for (let i = 0; i < pixels.length; i += 4) {
-              const red = pixels[i], green = pixels[i + 1], blue = pixels[i + 2];
-              if (pixels[i + 3] < 100 || (red > 238 && green > 238 && blue > 238)) continue;
-              r += red; g += green; b += blue; count++;
-            }
-            resolve(count ? rgbToHex(Math.round(r / count), Math.round(g / count), Math.round(b / count)) : null);
-          } catch { resolve(null); }
-        };
-        image.onerror = () => resolve(null);
-        image.src = source;
-      });
+    function canvasToBlob(canvas) {
+      return new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Could not prepare this photo.')), 'image/jpeg', .9));
+    }
+    async function prepareClothingPhoto(file) {
+      const image = await loadImageFile(file);
+      const resize = Math.min(1, 1200 / Math.max(image.width, image.height));
+      const inputCanvas = document.createElement('canvas');
+      inputCanvas.width = Math.round(image.width * resize);
+      inputCanvas.height = Math.round(image.height * resize);
+      inputCanvas.getContext('2d').drawImage(image, 0, 0, inputCanvas.width, inputCanvas.height);
+      const removeBackground = await getBackgroundRemovalPipeline();
+      $('#image-processing-status').textContent = 'Removing the background and cropping the garment...';
+      const foreground = await removeBackground(await canvasToBlob(inputCanvas));
+      const { data, width, height, channels } = foreground;
+      if (channels !== 4) throw new Error('The background model did not return an alpha matte.');
+      let left = width, top = height, right = -1, bottom = -1;
+      let redTotal = 0, greenTotal = 0, blueTotal = 0, colorCount = 0;
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const offset = (y * width + x) * channels;
+          const alpha = data[offset + 3];
+          if (alpha <= 24) continue;
+          left = Math.min(left, x); top = Math.min(top, y); right = Math.max(right, x); bottom = Math.max(bottom, y);
+          if (alpha > 160) { redTotal += data[offset]; greenTotal += data[offset + 1]; blueTotal += data[offset + 2]; colorCount++; }
+        }
+      }
+      if (right < left || bottom < top) throw new Error('No clothing was found in this photo.');
+      const color = colorCount ? rgbToHex(Math.round(redTotal / colorCount), Math.round(greenTotal / colorCount), Math.round(blueTotal / colorCount)) : null;
+      const matteCanvas = document.createElement('canvas'); matteCanvas.width = width; matteCanvas.height = height;
+      matteCanvas.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(data), width, height), 0, 0);
+      const padding = Math.round(Math.max(right - left + 1, bottom - top + 1) * .06);
+      left = Math.max(0, left - padding); top = Math.max(0, top - padding);
+      right = Math.min(width - 1, right + padding); bottom = Math.min(height - 1, bottom + padding);
+      const cropWidth = right - left + 1, cropHeight = bottom - top + 1;
+      const output = document.createElement('canvas'); output.width = 720; output.height = 720;
+      const context = output.getContext('2d'); context.fillStyle = '#ffffff'; context.fillRect(0, 0, 720, 720);
+      const fit = Math.min(620 / cropWidth, 620 / cropHeight);
+      const drawWidth = cropWidth * fit, drawHeight = cropHeight * fit;
+      context.drawImage(matteCanvas, left, top, cropWidth, cropHeight, (720 - drawWidth) / 2, (720 - drawHeight) / 2, drawWidth, drawHeight);
+      return { image: output.toDataURL('image/jpeg', .9), color };
     }
     function rgbToHex(r, g, b) { return '#' + [r,g,b].map(n => n.toString(16).padStart(2,'0')).join(''); }
     function saveItem(event) {

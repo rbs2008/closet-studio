@@ -36,9 +36,9 @@
   <main>
     <div class="eyebrow">Your clothes stay yours</div>
     <h1>Privacy Policy</h1>
-    <p class="updated">Effective date: October 12, 2026 · Version 2</p>
+    <p class="updated">Effective date: October 12, 2026 · Version 3</p>
     <aside class="release-note"><strong>App Store setup required:</strong> Publish this policy at a publicly accessible URL and use that URL in App Store Connect before submitting the app.</aside>
-    <div class="summary"><strong>The short version:</strong> Closet Studio processes your wardrobe on your device. Clothing photos, item details, and an optional device-only profile are saved in local app storage. There is no online account or sync, and the current app does not send them to a server, use advertising or analytics trackers, or share them with us.</div>
+    <div class="summary"><strong>The short version:</strong> Closet Studio processes your photos on your device and stores your wardrobe locally. To remove photo backgrounds, it downloads a code library from jsDelivr and an AI model from Hugging Face (about 94 MB on supported devices). Those providers may receive normal request metadata, but your photo is not uploaded to them or to Closet Studio.</div>
 
     <section>
       <h2>Who this policy covers</h2>
@@ -61,17 +61,22 @@
 
     <section>
       <h2>Photos and device permissions</h2>
-      <p>You choose which image to add using the file or photo picker provided by your device. The app only processes the image you select. It does not scan your photo library or access other images. Image resizing and color sampling happen on your device.</p>
+      <p>You choose which image to add using the file or photo picker provided by your device. The app only processes the image you select. It does not scan your photo library or access other images. Image resizing, background removal, cropping, and color sampling happen on your device. The resulting photo is saved in this app's local browser storage.</p>
     </section>
 
     <section>
       <h2>How information is used</h2>
-      <p>Information stored in the app is used to display your wardrobe, filter clothing by type and weather, estimate item colors, and create outfit suggestions. Outfit matching runs on your device.</p>
+      <p>Information stored in the app is used to display your wardrobe, filter clothing by type and weather, estimate item colors, and create outfit suggestions. Photo segmentation and outfit matching run on your device.</p>
+    </section>
+
+    <section>
+      <h2>Model and code downloads</h2>
+      <p>The first time you add a photo, the app downloads the Transformers.js code library from jsDelivr and the BiRefNet Lite background-removal model from Hugging Face. The model download is about 94 MB when WebGPU is supported; devices using CPU processing may download a larger model and process more slowly. These downloads require an internet connection. jsDelivr and Hugging Face may receive your IP address, browser or device request headers, and the requested resource as part of ordinary web requests. They do not receive the photo you selected. The app does not send wardrobe photos or item details to these providers.</p>
     </section>
 
     <section>
       <h2>Sharing, advertising, and tracking</h2>
-      <p>The current version does not transmit wardrobe information to the publisher or other parties. It does not include advertising, analytics, or cross-app tracking. The device operating system and app distribution platform may process information under their own privacy terms.</p>
+      <p>The current version does not transmit wardrobe information to the publisher. It does not include advertising, in-app analytics, or cross-app tracking. Apart from the model and code downloads described above, it does not send photos or wardrobe entries to third parties. The device operating system and app distribution platform may process information under their own privacy terms.</p>
       <p>If a future version adds online accounts, cloud sync, analytics, advertising, or other data sharing, this policy and the app's privacy disclosures must be updated before those features are used.</p>
     </section>
 
