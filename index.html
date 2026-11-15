@@ -542,7 +542,7 @@
       <div class="privacy-kicker">A note about your closet</div>
       <h2 id="privacy-title">Your clothes stay yours.</h2>
       <p class="privacy-copy" id="privacy-copy">Before using Closet Studio, please review how the app handles your wardrobe information.</p>
-      <div class="privacy-summary">Your selected photo is compressed, cropped, and processed on this device. Closet Studio does not send it to an image-search service. First use downloads the model (about 94 MB).</div>
+      <div class="privacy-summary">Your selected photo is compressed, cropped, and analyzed on this device. Closet Studio does not send it to an image-search service. First use downloads the background-removal model and a small clothing-type classifier.</div>
       <a class="privacy-link" href="./privacy-policy.html" target="_blank" rel="noopener">Read the full Privacy Policy</a>
       <label class="privacy-checkbox" id="privacy-checkbox-label"><input id="privacy-checkbox" type="checkbox"><span>I have read and agree to the Privacy Policy.</span></label>
       <div class="privacy-actions" id="privacy-actions"><button class="privacy-decline" id="privacy-decline" type="button">I don't agree</button><button class="primary-btn" id="privacy-accept" type="button" disabled>Agree &amp; continue</button></div>
@@ -637,14 +637,16 @@
       sage: { color: '#f6f8f2' }
     };
     const ACCOUNT_KEY = 'closet-studio-local-account-v1';
-    const PRIVACY_VERSION = '2026-11-15-11';
+    const PRIVACY_VERSION = '2026-11-15-12';
     const PRIVACY_KEY = 'closet-studio-privacy-consent';
     const state = { items: [], favorites: [], appearance: { ...DEFAULT_APPEARANCE }, preferences: { ...DEFAULT_PREFERENCES }, category: 'All pieces', weather: 'all', mode: 'complementary', occasion: 'casual', query: '', outfit: null, editingId: null, pendingImage: null, temperatureUnit: 'C', account: null, initialized: false };
     const TRANSFORMERS_MODULE_URL = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.1';
     const BACKGROUND_REMOVAL_MODEL = 'studioludens/birefnet-lite-512';
+    const CLOTHING_CLASSIFICATION_MODEL = 'onnx-community/mobilenet_v2_1.0_224';
     let backgroundRemovalPipelinePromise = null;
     let backgroundRemovalDevice = null;
     let backgroundRemovalForceCpu = false;
+    let clothingClassificationPipelinePromise = null;
     let generatedTitleIsColorBased = false;
     let itemNameManuallyEdited = false;
     const $ = (selector) => document.querySelector(selector);
@@ -1270,16 +1272,23 @@
           $('#image-processing-status').textContent = 'Background removal could not finish. Preparing the compressed original...';
           prepared = await prepareOriginalPhoto(file);
         }
+        let detectedType = null;
+        try {
+          $('#image-processing-status').textContent = 'Identifying clothing type on this device...';
+          detectedType = await classifyClothingType(prepared.image);
+        } catch (error) {
+          console.warn('Could not identify the clothing type from this photo.', error);
+        }
         $('#image-processing-backdrop').classList.remove('open');
         state.pendingImage = prepared.image;
         state.editingId = null;
         $('#modal-title').textContent = 'Add a piece';
         $('#modal-description').textContent = prepared.isolated
-          ? 'Background removed and photo cropped on this device. Confirm the details, then select Save piece.'
-          : 'Background removal could not finish on this device. A compressed copy of your photo is ready to save.';
+          ? 'Background removed and photo cropped on this device. Confirm the detected details, then select Save piece.'
+          : 'A compressed copy of your photo is ready. Confirm the detected details, then select Save piece.';
         $('#preview-image').src = prepared.image;
-        $('#item-type').value = 'top';
-        generatedTitleIsColorBased = prepared.isolated && Boolean(prepared.color);
+        $('#item-type').value = detectedType || 'top';
+        generatedTitleIsColorBased = Boolean(prepared.color);
         itemNameManuallyEdited = false;
         $('#item-name').value = generatedTitleIsColorBased
           ? generatePieceTitle($('#item-type').value, prepared.color)
@@ -1297,11 +1306,39 @@
         if (!prepared.isolated) {
           toast('A compressed copy is ready; background removal was unavailable.');
         }
+        if (!detectedType) {
+          toast('Could not identify the clothing type. Choose its type before saving; the photo is ready.');
+        }
       } catch (error) {
         console.error('Could not prepare the clothing photo.', error);
         $('#image-processing-backdrop').classList.remove('open');
-        toast('Could not open this photo. Try another image format.');
+        toast(`Could not prepare this photo: ${error instanceof Error ? error.message : 'unsupported image format'}`);
       }
+    }
+    async function classifyClothingType(image) {
+      if (!clothingClassificationPipelinePromise) {
+        clothingClassificationPipelinePromise = (async () => {
+          const { pipeline } = await import(TRANSFORMERS_MODULE_URL);
+          $('#image-processing-status').textContent = 'Loading the on-device clothing classifier. First use downloads about 4 MB...';
+          return pipeline('image-classification', CLOTHING_CLASSIFICATION_MODEL, { device: 'wasm', dtype: 'q8' });
+        })().catch(error => {
+          clothingClassificationPipelinePromise = null;
+          throw error;
+        });
+      }
+      const classify = await clothingClassificationPipelinePromise;
+      const predictions = await classify(image, { topk: 10 });
+      return predictions.map(({ label }) => clothingTypeFromLabel(label)).find(Boolean) || null;
+    }
+    function clothingTypeFromLabel(label) {
+      const description = String(label).toLowerCase();
+      if (/\b(shoe|sneaker|sandal|boot|loafer|slipper|clog|flip flop|footwear)\b/.test(description)) return 'shoes';
+      if (/\b(dress|gown|abaya|sarong|bikini|swimsuit|maillot)\b/.test(description)) return 'dress';
+      if (/\b(jean|trouser|pant|short|skirt|legging|swimming trunks)\b/.test(description)) return 'bottom';
+      if (/\b(jacket|coat|cardigan|cloak|poncho|parka|blazer|suit)\b/.test(description)) return 'jacket';
+      if (/\b(bag|purse|handbag|backpack|sunglass|hat|cap|tie|scarf|belt|glove|wallet|watch|necklace|bracelet|jewelry|sock|brassiere|bra)\b/.test(description)) return 'accessory';
+      if (/\b(shirt|t[- ]shirt|tee[- ]shirt|blouse|jersey|sweater|sweatshirt|pullover|vest|polo|tank top)\b/.test(description)) return 'top';
+      return null;
     }
     function getBackgroundRemovalPipeline() {
       if (!backgroundRemovalPipelinePromise) {
@@ -1438,8 +1475,14 @@
         context.fillRect(0, 0, output.width, output.height);
         const fit = Math.min(620 / image.width, 620 / image.height);
         const drawWidth = image.width * fit, drawHeight = image.height * fit;
-        context.drawImage(image, (720 - drawWidth) / 2, (720 - drawHeight) / 2, drawWidth, drawHeight);
-        return { image: output.toDataURL('image/jpeg', .82), color: null, isolated: false };
+        const drawLeft = (720 - drawWidth) / 2, drawTop = (720 - drawHeight) / 2;
+        context.drawImage(image, drawLeft, drawTop, drawWidth, drawHeight);
+        const sampleLeft = Math.round(drawLeft + drawWidth * .2);
+        const sampleTop = Math.round(drawTop + drawHeight * .2);
+        const sampleWidth = Math.max(1, Math.round(drawWidth * .6));
+        const sampleHeight = Math.max(1, Math.round(drawHeight * .6));
+        const color = sampleCanvasColor(context, sampleLeft, sampleTop, sampleWidth, sampleHeight);
+        return { image: output.toDataURL('image/jpeg', .82), color, isolated: false };
       } finally {
         decoded.release();
         output.width = 0;
@@ -1447,6 +1490,17 @@
       }
     }
     function rgbToHex(r, g, b) { return '#' + [r,g,b].map(n => n.toString(16).padStart(2,'0')).join(''); }
+    function sampleCanvasColor(context, left, top, width, height) {
+      const { data } = context.getImageData(left, top, width, height);
+      let red = 0, green = 0, blue = 0, count = 0;
+      for (let offset = 0; offset < data.length; offset += 16) {
+        red += data[offset];
+        green += data[offset + 1];
+        blue += data[offset + 2];
+        count++;
+      }
+      return count ? rgbToHex(Math.round(red / count), Math.round(green / count), Math.round(blue / count)) : null;
+    }
     function generatePieceTitle(type, color) { return `${describeColor(color)} ${type}`; }
     function updateGeneratedPieceTitle() {
       if (state.editingId || itemNameManuallyEdited || !generatedTitleIsColorBased) return;
