@@ -592,7 +592,7 @@
   </div>
   <div class="modal-backdrop" id="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <form class="modal" id="item-form">
-      <div class="modal-head"><div><h3 id="modal-title">Add a piece</h3><p>Give this piece a place in your closet.</p></div><button class="close-btn" type="button" id="close-modal" aria-label="Close">×</button></div>
+      <div class="modal-head"><div><h3 id="modal-title">Add a piece</h3><p id="modal-description">Give this piece a place in your closet.</p></div><button class="close-btn" type="button" id="close-modal" aria-label="Close">×</button></div>
       <div class="preview-row"><div class="preview-box"><img id="preview-image" alt="Clothing item preview"></div><div><div class="field"><label for="item-name">Name</label><input type="text" id="item-name" required maxlength="48" placeholder="e.g. Blue linen shirt"></div><div class="field"><label for="item-type">Type</label><select id="item-type"><option value="top">Top</option><option value="bottom">Bottom</option><option value="jacket">Jacket</option><option value="dress">Dress</option><option value="shoes">Shoes</option><option value="accessory">Accessory</option></select></div></div></div>
       <div class="field"><label for="item-image-url">Online image <span class="field-hint">(optional)</span></label><div class="online-search-row"><input type="url" id="item-image-url" placeholder="https://" inputmode="url"><a class="quiet-btn" href="https://lens.google.com/" target="_blank" rel="noopener noreferrer">Open Google Lens</a></div><div class="field-hint">Upload your photo to Lens yourself, then paste a direct result image URL here and update the name above. Closet Studio does not send your photo. The link is saved on this device; the image stays on its original website.</div></div>
       <div class="field"><label>Color <span class="field-hint">(sampled from your photo; adjust as needed)</span></label><div class="color-field"><input id="item-color" type="color" value="#d86d55" aria-label="Clothing color"><span class="field-hint" id="color-name">Warm coral</span></div></div>
@@ -996,9 +996,13 @@
       closeAccountDialog();
       toast('Account and saved wardrobe deleted from this device.');
     }
-    function persist() {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.items)); }
-      catch { toast('Your browser storage is full. Try a smaller image.'); }
+    function persist(items = state.items) {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); return true; }
+      catch (error) {
+        console.error('Could not save the closet on this device.', error);
+        toast('Could not save your closet on this device. Free browser storage or remove a saved photo, then try again.');
+        return false;
+      }
     }
     function setSettingsStatus(message) {
       const status = $('#settings-data-status');
@@ -1250,6 +1254,7 @@
         state.pendingImage = prepared.image;
         state.editingId = null;
         $('#modal-title').textContent = 'Add a piece';
+        $('#modal-description').textContent = 'Photo ready. Confirm the details, then select Save piece to add it to your closet.';
         $('#preview-image').src = prepared.image;
         $('#item-image-url').value = '';
         $('#item-name').value = file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ');
@@ -1388,13 +1393,15 @@
       const existing = state.items.find(item => item.id === state.editingId);
       const occasions = $$('input[name="occasion"]:checked').map(input => input.value);
       const item = { id: existing?.id || `item-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, name: $('#item-name').value.trim(), type: $('#item-type').value, color: $('#item-color').value, seasons, occasions, image: onlineImageUrl || state.pendingImage || existing?.image || null, sample: false };
-      if (existing) state.items = state.items.map(old => old.id === existing.id ? item : old); else state.items.unshift(item);
-      persist(); renderAll(); closeModal(); toast(existing ? 'Piece updated.' : 'Added to your closet.');
+      const items = existing ? state.items.map(old => old.id === existing.id ? item : old) : [item, ...state.items];
+      if (!persist(items)) return;
+      state.items = items;
+      renderAll(); closeModal(); toast(existing ? 'Piece updated.' : 'Added to your closet.');
     }
     function openEdit(id) {
       const item = state.items.find(entry => entry.id === id); if (!item) return;
       state.editingId = id; state.pendingImage = null;
-      $('#modal-title').textContent = 'Edit this piece'; $('#preview-image').src = item.image || svgArt(item.color, item.art || item.type);
+      $('#modal-title').textContent = 'Edit this piece'; $('#modal-description').textContent = 'Update the details, then select Save piece to keep your changes.'; $('#preview-image').src = item.image || svgArt(item.color, item.art || item.type);
       $('#item-image-url').value = item.image?.startsWith('https://') ? item.image : '';
       $('#item-name').value = item.name; $('#item-type').value = item.type; $('#item-color').value = item.color; $('#color-name').textContent = describeColor(item.color);
       setOccasionChecks(item.occasions || inferOccasions(item.name, item.type));
