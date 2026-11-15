@@ -36,9 +36,9 @@
   <main>
     <div class="eyebrow">Your clothes stay yours</div>
     <h1>Privacy Policy</h1>
-    <p class="updated">Effective date: November 15, 2026 · Version 10</p>
+    <p class="updated">Effective date: November 15, 2026 · Version 11</p>
     <aside class="release-note"><strong>App Store setup required:</strong> Publish this policy at a publicly accessible URL and use that URL in App Store Connect before submitting the app.</aside>
-    <div class="summary"><strong>The short version:</strong> Your selected photo stays on this device unless you tap the online image-search button. That sends a resized copy through the Closet Studio search service to Google Cloud Vision Web Detection. Search results are suggestions; the selected image URL and item details are saved locally. Google and Cloudflare process requests under their own privacy terms.</div>
+    <div class="summary"><strong>The short version:</strong> Your selected photo is compressed, processed to remove its background, and cropped on this device. Closet Studio does not send it to an image-search service. The background-removal model and code are downloaded separately on first use.</div>
 
     <section>
       <h2>Who this policy covers</h2>
@@ -50,7 +50,7 @@
       <p>When you add a clothing item, the app stores the information needed to show and organize it:</p>
       <ul>
         <li>The clothing photo you select. The app resizes the image on your device before saving it.</li>
-        <li>If you choose an online image, its URL and the item title you enter. The URL is saved locally, while the image itself remains on its original website and is loaded from there when displayed.</li>
+        <li>Any previously saved online image links remain on their original websites and are loaded from there when displayed.</li>
         <li>The item name, clothing type, color, weather or season tags, and occasion tags. Occasion tags are suggested from the item name and type when adding a piece and can be changed by you.</li>
         <li>Your favorite outfit selections, which refer to the clothing items saved in your wardrobe and include their names, types, and colors as a local preview.</li>
         <li>Your appearance preferences, including theme, color palette, and layout spacing.</li>
@@ -60,12 +60,12 @@
         <li>Your temporary temperature entry and generated outfit while the app is open. These are not added to the saved wardrobe.</li>
         <li>A local record that you accepted this policy, including its version and acceptance time, so the app can remember your choice.</li>
       </ul>
-      <p>Wardrobe entries, the optional profile, and the acceptance record are stored in local browser storage on the device running the app. They are not uploaded to an online account. If you choose online image search, the selected photo is sent to Google Cloud Vision through a Closet Studio Cloudflare Worker for that search; the app does not intentionally store the photo on the Worker. Google and Cloudflare may receive request information under their own terms. When an online image link is displayed, the browser requests it from its host, which may receive your IP address and normal request metadata. Sample wardrobe items may appear when the app has no saved wardrobe data.</p>
+      <p>Wardrobe entries, the optional profile, photos, and the acceptance record are stored in local browser storage on the device running the app. They are not uploaded to an online account. Previously saved online image links may cause the browser to request an image from its original host, which may receive your IP address and normal request metadata. Sample wardrobe items may appear when the app has no saved wardrobe data.</p>
     </section>
 
     <section>
       <h2>Photos and device permissions</h2>
-      <p>You choose which image to add using the file or photo picker provided by your device. The app only processes the image you select and does not scan your photo library or access other images. Image resizing and color sampling happen on your device. On phones, the app does not run background removal. If you tap <strong>Find an online photo and title</strong>, a resized JPEG copy of the selected image is sent to the Closet Studio search Worker, which forwards it to Google Cloud Vision Web Detection and returns possible image links and page titles. The app does not intentionally log or store the photo on the Worker; Google and Cloudflare process the request under their own privacy terms. This search is optional. If you do not use it, your uploaded photo remains in this app's local browser storage. The separate Google Lens link opens Lens for you to use directly.</p>
+      <p>You choose which image to add using the file or photo picker provided by your device. The app only processes the image you select and does not scan your photo library or access other images. Closet Studio compresses the photo, runs background removal, crops to the clothing, and samples its color on your device. The selected photo is not sent to an image-search service. If background removal is unavailable, the app prepares a compressed copy of the original photo so you can still save it.</p>
     </section>
 
     <section>
@@ -75,12 +75,12 @@
 
     <section>
       <h2>Model and code downloads</h2>
-      <p>Desktop background removal may download the Transformers.js code library from jsDelivr and the BiRefNet Lite model from Hugging Face. These downloads require an internet connection. jsDelivr and Hugging Face may receive your IP address, browser or device request headers, and the requested resource as part of ordinary web requests; they do not receive the photo selected for background removal. Phone uploads skip this model. Online image search is a separate, optional feature that sends a resized photo to Google Cloud Vision through the search Worker as described above.</p>
+      <p>On first use, the app may download the Transformers.js code library from jsDelivr and the BiRefNet Lite model from Hugging Face. These downloads require an internet connection and may use data; the providers receive ordinary download request information but not the selected photo. The model processes a compressed copy locally on the device. Background removal can take longer on phones; if it cannot complete, the app offers a compressed original instead.</p>
     </section>
 
     <section>
       <h2>Sharing, advertising, and tracking</h2>
-      <p>The app does not include advertising, in-app analytics, or cross-app tracking. Closet Studio does not upload your wardrobe or profile. If you tap the online-search button, the selected resized photo is sent to the Closet Studio Cloudflare Worker and Google Cloud Vision Web Detection to find possible matches. The Worker relays the request and does not intentionally store the photo; Google and Cloudflare may process it under their own terms. The item you select, its title, and the image URL are saved locally. Loading a saved online image sends ordinary request metadata to the image host. The device operating system and app distribution platform may process information under their own privacy terms.</p>
+      <p>The app does not include advertising, in-app analytics, or cross-app tracking. Closet Studio does not upload your wardrobe, profile, or newly selected clothing photos. Image resizing, background removal, cropping, and color sampling happen on your device. Previously saved online image links may still contact their original image hosts when displayed. The device operating system and app distribution platform may process information under their own privacy terms.</p>
     </section>
 
     <section>
@@ -92,12 +92,12 @@
 
     <section>
       <h2>Security</h2>
-      <p>Closet Studio does not create an online account or sync your wardrobe. The optional local profile is not used to authenticate a login. Local browser storage is not encrypted by Closet Studio itself. Secure your device and user profile. Do not use online image search for photos you do not want sent to Google Cloud Vision and processed by Google and Cloudflare.</p>
+      <p>Closet Studio does not create an online account or sync your wardrobe. The optional local profile is not used to authenticate a login. Local browser storage is not encrypted by Closet Studio itself. Secure your device and user profile. Photos selected for new wardrobe items are processed locally and are not sent to an image-search provider.</p>
     </section>
 
     <section>
       <h2>Children</h2>
-      <p>Closet Studio is not directed to children under 13. The app does not knowingly collect personal information from children. If online image search is used, the selected photo is sent to Google Cloud Vision and processed by Google and Cloudflare. A parent or guardian who has a concern can use the contact details below.</p>
+      <p>Closet Studio is not directed to children under 13. The app does not knowingly collect personal information from children. Photos selected for clothing items are processed on the device and are not sent to an image-search service. A parent or guardian who has a concern can use the contact details below.</p>
     </section>
 
     <section>
