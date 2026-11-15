@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#fff6fa">
+  <title>Favorite outfits | Closet Studio</title>
+  <link rel="icon" type="image/svg+xml" href="./closet-cover.svg">
+  <link rel="stylesheet" href="./favorites.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <a class="brand" href="./index.html">
+        <span class="brand-mark" aria-hidden="true">C</span>
+        <span><span class="brand-name">Closet Studio</span><span class="brand-caption">A little more put together</span></span>
+      </a>
+      <div class="nav-label">Your space</div>
+      <nav class="nav" aria-label="Main navigation">
+        <a class="nav-btn" href="./index.html" aria-label="My wardrobe"><span class="nav-icon" aria-hidden="true">▤</span><span>My wardrobe</span></a>
+        <a class="nav-btn" href="./index.html#studio" aria-label="Outfit studio"><span class="nav-icon" aria-hidden="true">✦</span><span>Outfit studio</span></a>
+        <a class="nav-btn active" href="./favorites.html" aria-label="Favorite outfits" aria-current="page"><span class="nav-icon" aria-hidden="true">♡</span><span>Favorites</span></a>
+        <a class="nav-btn" href="./index.html#settings-appearance" aria-label="Settings"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.09a2 2 0 0 1 1 1.73v.5a2 2 0 0 1-1 1.73l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.73v-.5a2 2 0 0 1 1-1.73l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></span><span>Settings</span></a>
+      </nav>
+      <div class="sidebar-note">Outfits you love, ready to wear again.</div>
+    </aside>
+    <main class="main">
+      <header class="topbar"><div class="breadcrumb">Your space <span aria-hidden="true">/</span> <b>Favorites</b></div><a class="quiet-btn" href="./index.html#studio">Back to Closet Studio</a></header>
+      <section class="page-head">
+        <div><div class="eyebrow">Saved for another day</div><h1>Your favorite <span>outfits.</span></h1><p class="page-subtitle">Looks you saved from your own closet, all in one place.</p></div>
+        <a class="primary-btn" href="./index.html#studio">Make an outfit</a>
+      </section>
+      <div class="status" id="status" role="status" aria-live="polite"></div>
+      <section class="favorite-grid" id="favorite-grid" aria-label="Saved favorite outfits"></section>
+      <footer class="page-footer"><a href="./privacy-policy.html" target="_blank" rel="noopener">Privacy Policy</a></footer>
+    </main>
+  </div>
+  <script>
+    const ITEMS_KEY = 'closet-studio-items-v1';
+    const FAVORITES_KEY = 'closet-studio-favorite-outfits-v1';
+    const APPEARANCE_KEY = 'closet-studio-appearance-v1';
+    const PRIVACY_KEY = 'closet-studio-privacy-consent';
+    const PRIVACY_VERSION = '2026-11-14-9';
+    const PALETTES = {
+      rose: '#fff6fa',
+      lavender: '#f8f5fc',
+      ocean: '#f3f8fa',
+      sage: '#f6f8f2'
+    };
+    const OCCASIONS = {
+      casual: 'Casual',
+      business: 'Business',
+      'semi-formal': 'Semi-formal',
+      formal: 'Formal',
+      party: 'Party',
+      activewear: 'Activewear'
+    };
+    const grid = document.getElementById('favorite-grid');
+    const status = document.getElementById('status');
+    let items = [];
+    let favorites = [];
+
+    function applyAppearance() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(APPEARANCE_KEY));
+        const theme = saved?.theme === 'dark' ? 'dark' : 'light';
+        const palette = Object.prototype.hasOwnProperty.call(PALETTES, saved?.palette) ? saved.palette : 'rose';
+        const density = saved?.density === 'compact' ? 'compact' : 'comfortable';
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.dataset.palette = palette;
+        document.documentElement.dataset.density = density;
+        document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#211e24' : PALETTES[palette];
+      } catch {
+        document.documentElement.dataset.theme = 'light';
+        document.documentElement.dataset.palette = 'rose';
+        document.documentElement.dataset.density = 'comfortable';
+      }
+    }
+
+    function setStatus(message) {
+      status.textContent = message;
+      status.hidden = !message;
+    }
+
+    function loadSavedData() {
+      try {
+        const consent = JSON.parse(localStorage.getItem(PRIVACY_KEY));
+        if (consent?.version !== PRIVACY_VERSION) {
+          status.textContent = 'Review and accept the current privacy policy in Closet Studio before viewing saved outfits. ';
+          const link = createElement('a', '', 'Review privacy in Closet Studio');
+          link.href = './index.html';
+          status.append(link);
+          return;
+        }
+        const savedItems = JSON.parse(localStorage.getItem(ITEMS_KEY));
+        const savedFavorites = JSON.parse(localStorage.getItem(FAVORITES_KEY));
+        items = Array.isArray(savedItems) ? savedItems : [];
+        favorites = Array.isArray(savedFavorites) ? savedFavorites.filter(entry => entry?.id && entry?.outfit?.top) : [];
+        renderFavorites();
+      } catch {
+        setStatus('Could not read your saved outfits from this device. Check that site storage is available.');
+      }
+    }
+
+    function createElement(tag, className, text) {
+      const element = document.createElement(tag);
+      if (className) element.className = className;
+      if (text !== undefined) element.textContent = text;
+      return element;
+    }
+
+    function createPieceTile(item, label) {
+      const tile = createElement('div', 'piece-tile');
+      tile.setAttribute('aria-label', label);
+      if (item) {
+        if (/^#[0-9a-f]{6}$/i.test(item.color || '')) tile.style.backgroundColor = item.color;
+        const image = typeof item.image === 'string' && (item.image.startsWith('https://') || item.image.startsWith('data:image/'))
+          ? item.image
+          : '';
+        if (image) {
+          const picture = document.createElement('img');
+          picture.src = image;
+          picture.alt = item.name || label;
+          picture.loading = 'lazy';
+          picture.referrerPolicy = 'no-referrer';
+          picture.addEventListener('error', () => {
+            tile.replaceChildren(createElement('span', 'piece-fallback', item.type || label));
+          }, { once: true });
+          tile.append(picture);
+        } else {
+          tile.append(createElement('span', 'piece-fallback', item.type || label));
+        }
+      } else {
+        tile.append(createElement('span', 'piece-fallback', label));
+      }
+      tile.append(createElement('span', 'piece-label', label));
+      return tile;
+    }
+
+    function renderFavorites() {
+      grid.replaceChildren();
+      if (!favorites.length) {
+        const empty = createElement('div', 'empty-state');
+        empty.append(createElement('h2', '', 'No favorite outfits yet'));
+        empty.append(createElement('p', '', 'Build an outfit in the studio and save the ones you want to wear again.'));
+        const link = createElement('a', 'primary-btn', 'Open outfit studio');
+        link.href = './index.html#studio';
+        empty.append(link);
+        grid.append(empty);
+        return;
+      }
+
+      favorites.forEach(favorite => {
+        const outfit = favorite.outfit || {};
+        const pieceFor = key => items.find(item => item.id === outfit[key]) || (favorite.items || []).find(item => item.id === outfit[key]);
+        const top = pieceFor('top');
+        const bottom = pieceFor('bottom');
+        const jacket = pieceFor('jacket');
+        const pieces = [top, bottom, jacket].filter(Boolean);
+        const title = pieces.length ? pieces.map(item => item.name || item.type).join(' + ') : favorite.name || 'Saved outfit';
+        const card = createElement('article', 'favorite-card');
+        const cardHead = createElement('div', 'favorite-card-head');
+        const heading = createElement('h2', 'favorite-title', title);
+        heading.title = title;
+        cardHead.append(heading, createElement('span', 'occasion-tag', OCCASIONS[favorite.occasion] || 'Outfit'));
+        const preview = createElement('div', 'outfit-preview');
+        preview.append(
+          createPieceTile(top, top?.type === 'dress' ? 'Dress' : 'Top'),
+          createPieceTile(bottom, top?.type === 'dress' && !bottom ? 'One-piece' : 'Bottom'),
+          createPieceTile(jacket, jacket ? 'Layer' : 'No layer')
+        );
+        const actions = createElement('div', 'favorite-actions');
+        const wearLink = createElement('a', 'primary-btn', 'Wear this outfit');
+        const outfitUrl = new URL('./index.html', location.href);
+        outfitUrl.searchParams.set('favorite', favorite.id);
+        outfitUrl.hash = 'studio';
+        wearLink.href = outfitUrl.href;
+        const removeButton = createElement('button', 'quiet-btn', 'Remove');
+        removeButton.type = 'button';
+        removeButton.setAttribute('aria-label', `Remove ${title} from favorites`);
+        removeButton.addEventListener('click', () => removeFavorite(favorite.id));
+        actions.append(wearLink, removeButton);
+        card.append(cardHead, preview, actions);
+        grid.append(card);
+      });
+    }
+
+    function removeFavorite(id) {
+      const previousFavorites = favorites;
+      favorites = favorites.filter(favorite => favorite.id !== id);
+      try {
+        localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+      } catch {
+        favorites = previousFavorites;
+        setStatus('Could not update favorites on this device. Check that site storage is available.');
+        return;
+      }
+      setStatus('');
+      renderFavorites();
+    }
+
+    applyAppearance();
+    loadSavedData();
+  </script>
+</body>
+</html>

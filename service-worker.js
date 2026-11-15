@@ -1,7 +1,9 @@
-const CACHE_NAME = 'closet-studio-shell-v5';
+const CACHE_NAME = 'closet-studio-shell-v12';
 const APP_SHELL = [
   './',
   './index.html',
+  './favorites.html',
+  './favorites.css',
   './privacy-policy.html',
   './closet-cover.svg',
   './manifest.webmanifest'

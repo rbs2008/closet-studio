@@ -36,9 +36,9 @@
   <main>
     <div class="eyebrow">Your clothes stay yours</div>
     <h1>Privacy Policy</h1>
-    <p class="updated">Effective date: October 12, 2026 · Version 3</p>
+    <p class="updated">Effective date: November 14, 2026 · Version 9</p>
     <aside class="release-note"><strong>App Store setup required:</strong> Publish this policy at a publicly accessible URL and use that URL in App Store Connect before submitting the app.</aside>
-    <div class="summary"><strong>The short version:</strong> Closet Studio processes your photos on your device and stores your wardrobe locally. To remove photo backgrounds, it downloads a code library from jsDelivr and an AI model from Hugging Face (about 94 MB on supported devices). Those providers may receive normal request metadata, but your photo is not uploaded to them or to Closet Studio.</div>
+    <div class="summary"><strong>The short version:</strong> Closet Studio processes your clothing photos on your device and does not upload them. If you choose, you can open Google Lens and upload a photo directly to that external provider yourself. The app stores an online image link and item details locally; it does not download the linked image into Closet Studio storage.</div>
 
     <section>
       <h2>Who this policy covers</h2>
@@ -50,23 +50,27 @@
       <p>When you add a clothing item, the app stores the information needed to show and organize it:</p>
       <ul>
         <li>The clothing photo you select. The app resizes the image on your device before saving it.</li>
-        <li>The item name, clothing type, color, and weather or season tags you choose.</li>
+        <li>If you choose an online image, its URL and the item title you enter. The URL is saved locally, while the image itself remains on its original website and is loaded from there when displayed.</li>
+        <li>The item name, clothing type, color, weather or season tags, and occasion tags. Occasion tags are suggested from the item name and type when adding a piece and can be changed by you.</li>
+        <li>Your favorite outfit selections, which refer to the clothing items saved in your wardrobe and include their names, types, and colors as a local preview.</li>
+        <li>Your appearance preferences, including theme, color palette, and layout spacing.</li>
+        <li>Your app preferences, including default outfit occasion, color-matching style, temperature unit, and wardrobe season filter.</li>
         <li>A color estimate sampled from the image, which is processed on your device and can be changed by you.</li>
         <li>If you choose to create a profile, your name, email address, and profile creation time. This device-only profile has no password, email verification, online sign-in, or cross-device sync.</li>
         <li>Your temporary temperature entry and generated outfit while the app is open. These are not added to the saved wardrobe.</li>
         <li>A local record that you accepted this policy, including its version and acceptance time, so the app can remember your choice.</li>
       </ul>
-      <p>Wardrobe entries, the optional profile, and the acceptance record are stored in local browser storage on the device running the app. They are not uploaded to an online account or a Closet Studio server. Sample wardrobe items may appear when the app has no saved wardrobe data.</p>
+      <p>Wardrobe entries, the optional profile, and the acceptance record are stored in local browser storage on the device running the app. They are not uploaded to an online account or a Closet Studio server. When an online image link is displayed, the browser requests it from its host, which may receive your IP address and normal request metadata. Sample wardrobe items may appear when the app has no saved wardrobe data.</p>
     </section>
 
     <section>
       <h2>Photos and device permissions</h2>
-      <p>You choose which image to add using the file or photo picker provided by your device. The app only processes the image you select. It does not scan your photo library or access other images. Image resizing, background removal, cropping, and color sampling happen on your device. The resulting photo is saved in this app's local browser storage.</p>
+      <p>You choose which image to add using the file or photo picker provided by your device. The app only processes the image you select and does not scan your photo library or access other images. Image resizing, background removal, cropping, and color sampling happen on your device, and the resulting photo is saved in this app's local browser storage. The optional Google Lens link only opens the provider's website; Closet Studio does not send your photo. If you choose to upload it on that website, the provider receives the photo and handles it under its own privacy terms.</p>
     </section>
 
     <section>
       <h2>How information is used</h2>
-      <p>Information stored in the app is used to display your wardrobe, filter clothing by type and weather, estimate item colors, and create outfit suggestions. Photo segmentation and outfit matching run on your device.</p>
+      <p>Information stored in the app is used to display your wardrobe, including any online image link you saved, filter clothing by type and weather, estimate item colors, suggest outfits for the occasion you select, restore outfits you saved as favorites, and apply your chosen appearance preferences. Occasion suggestions and outfit matching run on your device.</p>
     </section>
 
     <section>
@@ -76,14 +80,15 @@
 
     <section>
       <h2>Sharing, advertising, and tracking</h2>
-      <p>The current version does not transmit wardrobe information to the publisher. It does not include advertising, in-app analytics, or cross-app tracking. Apart from the model and code downloads described above, it does not send photos or wardrobe entries to third parties. The device operating system and app distribution platform may process information under their own privacy terms.</p>
-      <p>If a future version adds online accounts, cloud sync, analytics, advertising, or other data sharing, this policy and the app's privacy disclosures must be updated before those features are used.</p>
+      <p>The current version does not transmit wardrobe information to the publisher. It does not include advertising, in-app analytics, or cross-app tracking. Closet Studio does not upload photos or wardrobe entries to third parties. If you independently upload a photo to Google Lens or another site, that service receives the photo; its own privacy terms apply. Loading a saved online image link also sends ordinary request metadata to the image host. The device operating system and app distribution platform may process information under their own privacy terms.</p>
+      <p>If a future version adds automatic online search, online accounts, cloud sync, analytics, advertising, or other data sharing, this policy and the app's privacy disclosures must be updated before those features are used.</p>
     </section>
 
     <section>
       <h2>Retention and deletion</h2>
-      <p>You can delete individual wardrobe items in the app. Deleting your device-only account removes its name and email as well as all saved wardrobe items and photos from this device. The separate privacy-policy acceptance record remains. You can also clear the app's data using your device or browser settings; this removes the local policy acceptance record and the app will ask you to review the policy again next time. You can open Privacy &amp; consent in the app and decline to withdraw the saved acceptance; the wardrobe remains locked until you agree again.</p>
+      <p>You can delete individual wardrobe items in the app; favorite outfits that include a deleted item are also removed. Deleting your device-only account removes its name and email as well as all saved wardrobe items, photos, and favorite outfits from this device. The separate privacy-policy acceptance record remains. You can also clear the app's data using your device or browser settings; this removes the local policy acceptance record and the app will ask you to review the policy again next time. You can open Privacy &amp; consent in the app and decline to withdraw the saved acceptance; the wardrobe remains locked until you agree again.</p>
       <p>Uninstalling the app or clearing its data may remove locally stored items. The exact behavior depends on how the app is installed and your device settings. Closet Studio cannot recover data deleted from the device.</p>
+      <p>The Data settings let you export a local backup file or import one. A backup may include clothing photos and optional profile information; keep it private and delete downloaded backups separately when they are no longer needed. Import replaces the current local wardrobe and settings. Closet Studio does not upload backup files. Deleting all local data leaves the separate policy-acceptance record in place.</p>
     </section>
 
     <section>
