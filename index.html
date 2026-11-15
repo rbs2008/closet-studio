@@ -542,7 +542,7 @@
       <div class="privacy-kicker">A note about your closet</div>
       <h2 id="privacy-title">Your clothes stay yours.</h2>
       <p class="privacy-copy" id="privacy-copy">Before using Closet Studio, please review how the app handles your wardrobe information.</p>
-      <div class="privacy-summary">Your selected photo is compressed, cropped, and analyzed on this device. Closet Studio does not send it to an image-search service. First use downloads the background-removal model and a small clothing-type classifier.</div>
+      <div class="privacy-summary">Your selected photo is compressed, cropped, and analyzed on this device. Closet Studio does not send it to an image-search service. First use downloads the background-removal model and a small clothing-type classifier. HEIC/HEIF photos may also need a converter download.</div>
       <a class="privacy-link" href="./privacy-policy.html" target="_blank" rel="noopener">Read the full Privacy Policy</a>
       <label class="privacy-checkbox" id="privacy-checkbox-label"><input id="privacy-checkbox" type="checkbox"><span>I have read and agree to the Privacy Policy.</span></label>
       <div class="privacy-actions" id="privacy-actions"><button class="privacy-decline" id="privacy-decline" type="button">I don't agree</button><button class="primary-btn" id="privacy-accept" type="button" disabled>Agree &amp; continue</button></div>
@@ -576,8 +576,8 @@
       <p class="processing-status" id="image-processing-status">Preparing photo on this device...</p>
     </section>
   </div>
-  <input id="file-input" type="file" accept="image/*" hidden>
-  <input id="camera-input" type="file" accept="image/*" capture="environment" hidden>
+  <input id="file-input" type="file" accept="image/*,.heic,.heif,.avif" hidden>
+  <input id="camera-input" type="file" accept="image/*,.heic,.heif,.avif" capture="environment" hidden>
   <div class="modal-backdrop" id="image-source-backdrop" role="dialog" aria-modal="true" aria-labelledby="image-source-title">
     <section class="modal">
       <div class="modal-head"><div><h3 id="image-source-title">Add a piece</h3><p>Take a new photo or choose one you already have.</p></div><button class="close-btn" id="image-source-close" type="button" aria-label="Close photo options">×</button></div>
@@ -637,16 +637,19 @@
       sage: { color: '#f6f8f2' }
     };
     const ACCOUNT_KEY = 'closet-studio-local-account-v1';
-    const PRIVACY_VERSION = '2026-11-15-12';
+    const PRIVACY_VERSION = '2026-11-15-13';
     const PRIVACY_KEY = 'closet-studio-privacy-consent';
     const state = { items: [], favorites: [], appearance: { ...DEFAULT_APPEARANCE }, preferences: { ...DEFAULT_PREFERENCES }, category: 'All pieces', weather: 'all', mode: 'complementary', occasion: 'casual', query: '', outfit: null, editingId: null, pendingImage: null, temperatureUnit: 'C', account: null, initialized: false };
     const TRANSFORMERS_MODULE_URL = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.1';
     const BACKGROUND_REMOVAL_MODEL = 'studioludens/birefnet-lite-512';
     const CLOTHING_CLASSIFICATION_MODEL = 'onnx-community/mobilenet_v2_1.0_224';
+    const HEIC_CONVERTER_URL = 'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';
     let backgroundRemovalPipelinePromise = null;
     let backgroundRemovalDevice = null;
     let backgroundRemovalForceCpu = false;
     let clothingClassificationPipelinePromise = null;
+    let heicDecoderPromise = null;
+    const heicConversions = new WeakMap();
     let generatedTitleIsColorBased = false;
     let itemNameManuallyEdited = false;
     const $ = (selector) => document.querySelector(selector);
@@ -1258,7 +1261,7 @@
       const file = event.target.files?.[0];
       event.target.value = '';
       if (!file) return;
-      if (file.type && !file.type.toLowerCase().startsWith('image/')) { toast('Choose an image file to add a piece.'); return; }
+      if (file.type && !file.type.toLowerCase().startsWith('image/') && !isHeicFile(file)) { toast('Choose an image file to add a piece.'); return; }
       const phoneViewport = document.documentElement.clientWidth <= 760;
       $('#image-processing-title').textContent = 'Preparing your photo';
       $('#image-processing-status').textContent = 'Compressing your photo on this device...';
@@ -1393,8 +1396,56 @@
         image.src = url;
       });
     }
-    async function decodeImageForProcessing(file) {
+    function isHeicFile(file) {
+      return /^image\/hei[cf](?:-sequence)?$/i.test(file.type || '') || /\.(?:heic|heif)$/i.test(file.name || '');
+    }
+    function getHeicDecoder() {
+      if (typeof window.heic2any === 'function') return Promise.resolve(window.heic2any);
+      if (!heicDecoderPromise) {
+        heicDecoderPromise = new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = HEIC_CONVERTER_URL;
+          script.onload = () => {
+            if (typeof window.heic2any === 'function') resolve(window.heic2any);
+            else {
+              heicDecoderPromise = null;
+              reject(new Error('The HEIC converter did not load correctly.'));
+            }
+          };
+          script.onerror = () => {
+            heicDecoderPromise = null;
+            reject(new Error('Could not load the HEIC converter. Connect to the internet and try again.'));
+          };
+          document.head.append(script);
+        });
+      }
+      return heicDecoderPromise;
+    }
+    function convertHeicFile(file) {
+      if (!heicConversions.has(file)) {
+        heicConversions.set(file, (async () => {
+          const convert = await getHeicDecoder();
+          const result = await convert({ blob: file, toType: 'image/jpeg', quality: .9 });
+          const converted = Array.isArray(result) ? result[0] : result;
+          if (!(converted instanceof Blob)) throw new Error('The HEIC converter returned no readable photo.');
+          return converted;
+        })().catch(error => {
+          heicConversions.delete(file);
+          throw error;
+        }));
+      }
+      return heicConversions.get(file);
+    }
+    async function decodeImageForProcessing(file, maxDimension = 1200) {
       if (typeof createImageBitmap === 'function') {
+        if (file.size > 2 * 1024 * 1024 || isHeicFile(file)) {
+          try {
+            const bitmap = await createImageBitmap(file, { resizeWidth: maxDimension, resizeQuality: 'high' });
+            return { image: bitmap, release: () => bitmap.close() };
+          } catch (error) {
+            console.warn('Could not decode this photo at reduced dimensions; trying the full-resolution decoder.', error);
+          }
+        }
         try {
           const bitmap = await createImageBitmap(file);
           return { image: bitmap, release: () => bitmap.close() };
@@ -1402,14 +1453,22 @@
           console.warn('ImageBitmap could not decode this photo; using the browser image decoder.', error);
         }
       }
-      const image = await loadImageFile(file);
-      return { image, release: () => image.removeAttribute('src') };
+      try {
+        const image = await loadImageFile(file);
+        return { image, release: () => image.removeAttribute('src') };
+      } catch (error) {
+        if (!isHeicFile(file)) throw error;
+        console.warn('The browser could not decode this HEIC photo natively; converting it to JPEG on this device.', error);
+        const convertedFile = await convertHeicFile(file);
+        const image = await loadImageFile(convertedFile);
+        return { image, release: () => image.removeAttribute('src') };
+      }
     }
     function canvasToBlob(canvas, quality = .86) {
       return new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Could not prepare this photo.')), 'image/jpeg', quality));
     }
     async function compressPhotoForModel(file, maxDimension, quality) {
-      const decoded = await decodeImageForProcessing(file);
+      const decoded = await decodeImageForProcessing(file, maxDimension);
       const image = decoded.image;
       const inputCanvas = document.createElement('canvas');
       try {
@@ -1462,7 +1521,7 @@
       return { image: output.toDataURL('image/jpeg', .9), color, isolated: true };
     }
     async function prepareOriginalPhoto(file) {
-      const decoded = await decodeImageForProcessing(file);
+      const decoded = await decodeImageForProcessing(file, 720);
       const image = decoded.image;
       const output = document.createElement('canvas');
       try {
