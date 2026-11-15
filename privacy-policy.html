@@ -36,9 +36,9 @@
   <main>
     <div class="eyebrow">Your clothes stay yours</div>
     <h1>Privacy Policy</h1>
-    <p class="updated">Effective date: November 15, 2026 · Version 13</p>
+    <p class="updated">Effective date: November 15, 2026 · Version 14</p>
     <aside class="release-note"><strong>App Store setup required:</strong> Publish this policy at a publicly accessible URL and use that URL in App Store Connect before submitting the app.</aside>
-    <div class="summary"><strong>The short version:</strong> Your selected photo is compressed, processed to remove its background, cropped, and analyzed for clothing type and color on this device. Closet Studio does not send it to an image-search service. The background-removal model, clothing classifier, and code are downloaded separately on first use. HEIC/HEIF photos may require an additional converter download.</div>
+    <div class="summary"><strong>The short version:</strong> Your selected photo is compressed and analyzed for clothing type and color on this device. On desktop, the app may also remove the background and crop the garment; on phones, it saves a compressed copy without running background removal for reliability. Closet Studio does not send the photo to an image-search service. Models and code are downloaded separately when needed. HEIC/HEIF photos may require an additional converter download.</div>
 
     <section>
       <h2>Who this policy covers</h2>
@@ -65,7 +65,7 @@
 
     <section>
       <h2>Photos and device permissions</h2>
-      <p>You choose which image to add using the file or photo picker provided by your device. The app only processes the image you select and does not scan your photo library or access other images. Closet Studio compresses the photo, runs background removal, crops to the clothing, samples its color, and classifies its clothing type on your device. The selected photo is not sent to an image-search service. If background removal is unavailable, the app prepares a compressed copy of the original photo so you can still save it.</p>
+      <p>You choose which image to add using the file or photo picker provided by your device. The app only processes the image you select and does not scan your photo library or access other images. Closet Studio compresses the photo and samples its color and classifies its clothing type on your device. On desktop, the app may also run background removal and crop the garment. On phones, it skips background removal and saves a compressed copy to avoid model-related upload failures. The selected photo is not sent to an image-search service.</p>
     </section>
 
     <section>
@@ -75,12 +75,12 @@
 
     <section>
       <h2>Model and code downloads</h2>
-      <p>On first use, the app may download the Transformers.js code library and, if a HEIC/HEIF photo needs conversion, the heic2any converter from jsDelivr. It may also download the BiRefNet Lite background-removal model and a small MobileNet clothing-type classifier from Hugging Face. These downloads require an internet connection and may use data; the providers receive ordinary download request information but not the selected photo. Conversion and model analysis happen locally on the device. Background removal can take longer on phones; if it cannot complete, the app offers a compressed original instead.</p>
+      <p>On first use, the app may download the Transformers.js code library and, if a HEIC/HEIF photo needs conversion, the heic2any converter from jsDelivr. It may also download the BiRefNet Lite background-removal model on desktop and a small MobileNet clothing-type classifier from Hugging Face. These downloads require an internet connection and may use data; the providers receive ordinary download request information but not the selected photo. Conversion and model analysis happen locally on the device. Phones skip background removal to reduce failures and resource use.</p>
     </section>
 
     <section>
       <h2>Sharing, advertising, and tracking</h2>
-      <p>The app does not include advertising, in-app analytics, or cross-app tracking. Closet Studio does not upload your wardrobe, profile, or newly selected clothing photos. Image resizing, background removal, cropping, color sampling, and clothing-type classification happen on your device. Previously saved online image links may still contact their original image hosts when displayed. The device operating system and app distribution platform may process information under their own privacy terms.</p>
+      <p>The app does not include advertising, in-app analytics, or cross-app tracking. Closet Studio does not upload your wardrobe, profile, or newly selected clothing photos. Image resizing, color sampling, and clothing-type classification happen on your device; desktop background removal and cropping also happen locally when used. Previously saved online image links may still contact their original image hosts when displayed. The device operating system and app distribution platform may process information under their own privacy terms.</p>
     </section>
 
     <section>

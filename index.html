@@ -542,7 +542,7 @@
       <div class="privacy-kicker">A note about your closet</div>
       <h2 id="privacy-title">Your clothes stay yours.</h2>
       <p class="privacy-copy" id="privacy-copy">Before using Closet Studio, please review how the app handles your wardrobe information.</p>
-      <div class="privacy-summary">Your selected photo is compressed, cropped, and analyzed on this device. Closet Studio does not send it to an image-search service. First use downloads the background-removal model and a small clothing-type classifier. HEIC/HEIF photos may also need a converter download.</div>
+      <div class="privacy-summary">Your selected photo is compressed and analyzed on this device. Desktop background removal is optional; phones use a compressed photo for reliability. Closet Studio does not send it to an image-search service. First use downloads the clothing-type classifier; background removal and HEIC/HEIF conversion may download code or models when needed.</div>
       <a class="privacy-link" href="./privacy-policy.html" target="_blank" rel="noopener">Read the full Privacy Policy</a>
       <label class="privacy-checkbox" id="privacy-checkbox-label"><input id="privacy-checkbox" type="checkbox"><span>I have read and agree to the Privacy Policy.</span></label>
       <div class="privacy-actions" id="privacy-actions"><button class="privacy-decline" id="privacy-decline" type="button">I don't agree</button><button class="primary-btn" id="privacy-accept" type="button" disabled>Agree &amp; continue</button></div>
@@ -637,7 +637,7 @@
       sage: { color: '#f6f8f2' }
     };
     const ACCOUNT_KEY = 'closet-studio-local-account-v1';
-    const PRIVACY_VERSION = '2026-11-15-13';
+    const PRIVACY_VERSION = '2026-11-15-14';
     const PRIVACY_KEY = 'closet-studio-privacy-consent';
     const state = { items: [], favorites: [], appearance: { ...DEFAULT_APPEARANCE }, preferences: { ...DEFAULT_PREFERENCES }, category: 'All pieces', weather: 'all', mode: 'complementary', occasion: 'casual', query: '', outfit: null, editingId: null, pendingImage: null, temperatureUnit: 'C', account: null, initialized: false };
     const TRANSFORMERS_MODULE_URL = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.1';
@@ -1262,18 +1262,24 @@
       event.target.value = '';
       if (!file) return;
       if (file.type && !file.type.toLowerCase().startsWith('image/') && !isHeicFile(file)) { toast('Choose an image file to add a piece.'); return; }
-      const phoneViewport = document.documentElement.clientWidth <= 760;
+      const phoneViewport = document.documentElement.clientWidth <= 760 || window.matchMedia?.('(pointer: coarse)').matches;
       $('#image-processing-title').textContent = 'Preparing your photo';
-      $('#image-processing-status').textContent = 'Compressing your photo on this device...';
+      $('#image-processing-status').textContent = phoneViewport
+        ? 'Preparing a compressed photo for reliable mobile processing...'
+        : 'Compressing your photo on this device...';
       $('#image-processing-backdrop').classList.add('open');
       try {
         let prepared;
-        try {
-          prepared = await prepareClothingPhoto(file, phoneViewport ? 512 : 1200);
-        } catch (error) {
-          console.warn('Background removal failed; preparing the compressed original photo instead.', error);
-          $('#image-processing-status').textContent = 'Background removal could not finish. Preparing the compressed original...';
+        if (phoneViewport) {
           prepared = await prepareOriginalPhoto(file);
+        } else {
+          try {
+            prepared = await prepareClothingPhoto(file, 1200);
+          } catch (error) {
+            console.warn('Background removal failed; preparing the compressed original photo instead.', error);
+            $('#image-processing-status').textContent = 'Background removal could not finish. Preparing the compressed original...';
+            prepared = await prepareOriginalPhoto(file);
+          }
         }
         let detectedType = null;
         try {
@@ -1288,7 +1294,9 @@
         $('#modal-title').textContent = 'Add a piece';
         $('#modal-description').textContent = prepared.isolated
           ? 'Background removed and photo cropped on this device. Confirm the detected details, then select Save piece.'
-          : 'A compressed copy of your photo is ready. Confirm the detected details, then select Save piece.';
+          : phoneViewport
+            ? 'A compressed copy of your photo is ready. Background removal is skipped on phones for reliability. Confirm the details, then select Save piece.'
+            : 'A compressed copy of your photo is ready. Confirm the detected details, then select Save piece.';
         $('#preview-image').src = prepared.image;
         $('#item-type').value = detectedType || 'top';
         generatedTitleIsColorBased = Boolean(prepared.color);
@@ -1306,7 +1314,7 @@
         $('#delete-item').hidden = true;
         $('#modal-backdrop').classList.add('open');
         $('#item-name').focus();
-        if (!prepared.isolated) {
+        if (!prepared.isolated && !phoneViewport) {
           toast('A compressed copy is ready; background removal was unavailable.');
         }
         if (!detectedType) {
