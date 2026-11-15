@@ -595,7 +595,7 @@
       <div class="modal-head"><div><h3 id="modal-title">Add a piece</h3><p id="modal-description">Give this piece a place in your closet.</p></div><button class="close-btn" type="button" id="close-modal" aria-label="Close">×</button></div>
       <div class="preview-row"><div class="preview-box"><img id="preview-image" alt="Clothing item preview"></div><div><div class="field"><label for="item-name">Name</label><input type="text" id="item-name" required maxlength="48" placeholder="e.g. Blue linen shirt"></div><div class="field"><label for="item-type">Type</label><select id="item-type"><option value="top">Top</option><option value="bottom">Bottom</option><option value="jacket">Jacket</option><option value="dress">Dress</option><option value="shoes">Shoes</option><option value="accessory">Accessory</option></select></div></div></div>
       <div class="field"><label for="item-image-url">Online image <span class="field-hint">(optional)</span></label><div class="online-search-row"><input type="url" id="item-image-url" placeholder="https://" inputmode="url"><a class="quiet-btn" href="https://lens.google.com/" target="_blank" rel="noopener noreferrer">Open Google Lens</a></div><div class="field-hint">Upload your photo to Lens yourself, then paste a direct result image URL here and update the name above. Closet Studio does not send your photo. The link is saved on this device; the image stays on its original website.</div></div>
-      <div class="field"><label>Color <span class="field-hint">(sampled from your photo; adjust as needed)</span></label><div class="color-field"><input id="item-color" type="color" value="#d86d55" aria-label="Clothing color"><span class="field-hint" id="color-name">Warm coral</span></div></div>
+      <div class="field"><label>Color <span class="field-hint" id="color-help">(sampled from your photo; adjust as needed)</span></label><div class="color-field"><input id="item-color" type="color" value="#d86d55" aria-label="Clothing color"><span class="field-hint" id="color-name">Warm coral</span></div></div>
       <div class="field"><label>Best in</label><div class="season-options"><label class="check-chip"><input type="checkbox" name="season" value="cool">Cool</label><label class="check-chip"><input type="checkbox" name="season" value="mild" checked>Mild</label><label class="check-chip"><input type="checkbox" name="season" value="warm">Warm</label></div></div>
       <div class="field"><label>Good for <span class="field-hint">(suggested automatically; adjust as needed)</span></label><div class="season-options" id="occasion-options"></div></div>
       <div class="modal-actions"><button class="danger-btn" type="button" id="delete-item" hidden>Remove piece</button><div class="action-right"><button class="quiet-btn" type="button" id="cancel-modal">Cancel</button><button class="primary-btn" type="submit" id="save-item">Save piece</button></div></div>
@@ -646,6 +646,8 @@
     const TRANSFORMERS_MODULE_URL = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.1';
     const BACKGROUND_REMOVAL_MODEL = 'studioludens/birefnet-lite-512';
     let backgroundRemovalPipelinePromise = null;
+    let backgroundRemovalDevice = null;
+    let backgroundRemovalForceCpu = false;
     const $ = (selector) => document.querySelector(selector);
     const $$ = (selector) => [...document.querySelectorAll(selector)];
 
@@ -1244,17 +1246,26 @@
       const file = event.target.files?.[0];
       event.target.value = '';
       if (!file) return;
-      if (!file.type.startsWith('image/')) { toast('Choose an image file to add a piece.'); return; }
+      if (file.type && !file.type.toLowerCase().startsWith('image/')) { toast('Choose an image file to add a piece.'); return; }
       $('#image-processing-title').textContent = 'Isolating your clothing';
       $('#image-processing-status').textContent = 'Preparing photo on this device...';
       $('#image-processing-backdrop').classList.add('open');
       try {
-        const prepared = await prepareClothingPhoto(file);
+        let prepared;
+        try {
+          prepared = await prepareClothingPhoto(file);
+        } catch (error) {
+          console.warn('Background removal failed; preparing the original photo instead.', error);
+          $('#image-processing-status').textContent = 'Background removal is unavailable. Preparing the original photo...';
+          prepared = await prepareOriginalPhoto(file);
+        }
         $('#image-processing-backdrop').classList.remove('open');
         state.pendingImage = prepared.image;
         state.editingId = null;
         $('#modal-title').textContent = 'Add a piece';
-        $('#modal-description').textContent = 'Photo ready. Confirm the details, then select Save piece to add it to your closet.';
+        $('#modal-description').textContent = prepared.isolated
+          ? 'Photo ready. Confirm the details, then select Save piece to add it to your closet.'
+          : 'Background removal is unavailable on this device. The original photo is ready; select Save piece to add it to your closet.';
         $('#preview-image').src = prepared.image;
         $('#item-image-url').value = '';
         $('#item-name').value = file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ');
@@ -1262,34 +1273,63 @@
         setOccasionChecks(inferOccasions($('#item-name').value, $('#item-type').value));
         $('#item-color').value = prepared.color || '#d86d55';
         $('#color-name').textContent = describeColor($('#item-color').value);
+        $('#color-help').textContent = prepared.color
+          ? '(sampled from your photo; adjust as needed)'
+          : '(adjust as needed)';
         $$('input[name="season"]').forEach(input => input.checked = input.value === seasonForTemperature(currentTemperatureCelsius()));
         $('#delete-item').hidden = true;
         $('#modal-backdrop').classList.add('open');
         $('#item-name').focus();
+        if (!prepared.isolated) toast('Background removal failed. You can still save the original photo.');
       } catch (error) {
-        console.error('Background removal failed', error);
+        console.error('Could not prepare the clothing photo.', error);
         $('#image-processing-backdrop').classList.remove('open');
-        toast('Could not isolate the clothing. Check your connection and try again.');
+        toast('Could not open this photo. Try a JPEG or PNG image.');
       }
     }
     function getBackgroundRemovalPipeline() {
       if (!backgroundRemovalPipelinePromise) {
         backgroundRemovalPipelinePromise = (async () => {
           const { pipeline } = await import(TRANSFORMERS_MODULE_URL);
-          const device = navigator.gpu ? 'webgpu' : 'wasm';
+          const device = !backgroundRemovalForceCpu && navigator.gpu ? 'webgpu' : 'wasm';
           $('#image-processing-status').textContent = device === 'webgpu'
             ? 'Loading the on-device model. First use downloads about 94 MB; stay online.'
             : 'Loading the on-device model for CPU processing. This may take a while; stay online.';
           const options = { device, dtype: device === 'webgpu' ? 'fp16' : 'fp32' };
-          try { return await pipeline('background-removal', BACKGROUND_REMOVAL_MODEL, options); }
+          try {
+            const removeBackground = await pipeline('background-removal', BACKGROUND_REMOVAL_MODEL, options);
+            backgroundRemovalDevice = device;
+            return removeBackground;
+          }
           catch (error) {
             if (device !== 'webgpu') throw error;
             $('#image-processing-status').textContent = 'Switching to CPU processing...';
-            return pipeline('background-removal', BACKGROUND_REMOVAL_MODEL, { device: 'wasm', dtype: 'fp32' });
+            backgroundRemovalForceCpu = true;
+            const removeBackground = await pipeline('background-removal', BACKGROUND_REMOVAL_MODEL, { device: 'wasm', dtype: 'fp32' });
+            backgroundRemovalDevice = 'wasm';
+            return removeBackground;
           }
-        })().catch(error => { backgroundRemovalPipelinePromise = null; throw error; });
+        })().catch(error => {
+          backgroundRemovalPipelinePromise = null;
+          backgroundRemovalDevice = null;
+          throw error;
+        });
       }
       return backgroundRemovalPipelinePromise;
+    }
+    async function runBackgroundRemoval(image) {
+      let removeBackground = await getBackgroundRemovalPipeline();
+      try { return await removeBackground(image); }
+      catch (error) {
+        if (backgroundRemovalDevice !== 'webgpu') throw error;
+        console.warn('WebGPU background removal failed; retrying with CPU processing.', error);
+        backgroundRemovalForceCpu = true;
+        backgroundRemovalPipelinePromise = null;
+        backgroundRemovalDevice = null;
+        $('#image-processing-status').textContent = 'Switching to CPU processing...';
+        removeBackground = await getBackgroundRemovalPipeline();
+        return removeBackground(image);
+      }
     }
     function loadImageFile(file) {
       return new Promise((resolve, reject) => {
@@ -1305,14 +1345,16 @@
     }
     async function prepareClothingPhoto(file) {
       const image = await loadImageFile(file);
-      const resize = Math.min(1, 1200 / Math.max(image.width, image.height));
+      const maxDimension = document.documentElement.clientWidth <= 760 ? 768 : 1200;
+      const resize = Math.min(1, maxDimension / Math.max(image.width, image.height));
       const inputCanvas = document.createElement('canvas');
       inputCanvas.width = Math.round(image.width * resize);
       inputCanvas.height = Math.round(image.height * resize);
-      inputCanvas.getContext('2d').drawImage(image, 0, 0, inputCanvas.width, inputCanvas.height);
-      const removeBackground = await getBackgroundRemovalPipeline();
+      const inputContext = inputCanvas.getContext('2d');
+      if (!inputContext) throw new Error('Could not prepare this photo on a canvas.');
+      inputContext.drawImage(image, 0, 0, inputCanvas.width, inputCanvas.height);
       $('#image-processing-status').textContent = 'Removing the background and cropping the garment...';
-      const foreground = await removeBackground(await canvasToBlob(inputCanvas));
+      const foreground = await runBackgroundRemoval(await canvasToBlob(inputCanvas));
       const { data, width, height, channels } = foreground;
       if (channels !== 4) throw new Error('The background model did not return an alpha matte.');
       let left = width, top = height, right = -1, bottom = -1;
@@ -1339,7 +1381,22 @@
       const fit = Math.min(620 / cropWidth, 620 / cropHeight);
       const drawWidth = cropWidth * fit, drawHeight = cropHeight * fit;
       context.drawImage(matteCanvas, left, top, cropWidth, cropHeight, (720 - drawWidth) / 2, (720 - drawHeight) / 2, drawWidth, drawHeight);
-      return { image: output.toDataURL('image/jpeg', .9), color };
+      return { image: output.toDataURL('image/jpeg', .9), color, isolated: true };
+    }
+    async function prepareOriginalPhoto(file) {
+      const image = await loadImageFile(file);
+      if (!image.width || !image.height) throw new Error('The photo has no readable dimensions.');
+      const output = document.createElement('canvas');
+      output.width = 720;
+      output.height = 720;
+      const context = output.getContext('2d');
+      if (!context) throw new Error('Could not prepare this photo on a canvas.');
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, output.width, output.height);
+      const fit = Math.min(620 / image.width, 620 / image.height);
+      const drawWidth = image.width * fit, drawHeight = image.height * fit;
+      context.drawImage(image, (720 - drawWidth) / 2, (720 - drawHeight) / 2, drawWidth, drawHeight);
+      return { image: output.toDataURL('image/jpeg', .82), color: null, isolated: false };
     }
     function rgbToHex(r, g, b) { return '#' + [r,g,b].map(n => n.toString(16).padStart(2,'0')).join(''); }
     function inferOccasions(name, type) {
