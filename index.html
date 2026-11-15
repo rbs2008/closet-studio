@@ -531,7 +531,7 @@
           </section>
           <section class="settings-panel" id="settings-panel-privacy" role="tabpanel" aria-labelledby="settings-tab-privacy" data-settings-panel="privacy" hidden>
             <h2>Privacy &amp; about</h2><p>Closet Studio is designed to work locally, without an online account or cloud sync.</p>
-            <dl class="settings-info"><dt>Storage</dt><dd>Your wardrobe, favorites, profile, and preferences are stored in this browser on this device.</dd><dt>Photos</dt><dd>Clothing photos are processed on this device. They are not sent to Closet Studio.</dd><dt>App version</dt><dd>Closet Studio · Local edition</dd></dl>
+            <dl class="settings-info"><dt>Storage</dt><dd>Your wardrobe, favorites, profile, and preferences are stored in this browser on this device.</dd><dt>Photos</dt><dd>Photos stay on this device unless you choose online image search, which sends a resized copy to Google Cloud Vision through a Closet Studio search service.</dd><dt>App version</dt><dd>Closet Studio · Local edition</dd></dl>
             <div class="settings-actions"><button class="quiet-btn" id="settings-review-privacy" type="button">Review privacy consent</button><button class="quiet-btn" id="settings-manage-profile" type="button">Manage local profile</button><a class="settings-link" href="./privacy-policy.html" target="_blank" rel="noopener">Privacy Policy</a></div>
           </section>
         </div>
@@ -544,7 +544,7 @@
       <div class="privacy-kicker">A note about your closet</div>
       <h2 id="privacy-title">Your clothes stay yours.</h2>
       <p class="privacy-copy" id="privacy-copy">Before using Closet Studio, please review how the app handles your wardrobe information.</p>
-      <div class="privacy-summary">Closet Studio does not upload your photos. You can choose to upload one yourself to an external visual-search provider. First-time photo cleanup downloads an on-device model (about 94 MB on supported devices) from Hugging Face and its runtime from jsDelivr.</div>
+      <div class="privacy-summary">Your photos stay on this device unless you choose Search online for a photo match. That sends a resized copy to Google Cloud Vision through Closet Studio's search service. Search results are suggestions; you choose what to save.</div>
       <a class="privacy-link" href="./privacy-policy.html" target="_blank" rel="noopener">Read the full Privacy Policy</a>
       <label class="privacy-checkbox" id="privacy-checkbox-label"><input id="privacy-checkbox" type="checkbox"><span>I have read and agree to the Privacy Policy.</span></label>
       <div class="privacy-actions" id="privacy-actions"><button class="privacy-decline" id="privacy-decline" type="button">I don't agree</button><button class="primary-btn" id="privacy-accept" type="button" disabled>Agree &amp; continue</button></div>
@@ -594,7 +594,18 @@
     <form class="modal" id="item-form">
       <div class="modal-head"><div><h3 id="modal-title">Add a piece</h3><p id="modal-description">Give this piece a place in your closet.</p></div><button class="close-btn" type="button" id="close-modal" aria-label="Close">×</button></div>
       <div class="preview-row"><div class="preview-box"><img id="preview-image" alt="Clothing item preview"></div><div><div class="field"><label for="item-name">Name</label><input type="text" id="item-name" required maxlength="48" placeholder="e.g. Blue linen shirt"></div><div class="field"><label for="item-type">Type</label><select id="item-type"><option value="top">Top</option><option value="bottom">Bottom</option><option value="jacket">Jacket</option><option value="dress">Dress</option><option value="shoes">Shoes</option><option value="accessory">Accessory</option></select></div></div></div>
-      <div class="field"><label for="item-image-url">Online image <span class="field-hint">(optional)</span></label><div class="online-search-row"><input type="url" id="item-image-url" placeholder="https://" inputmode="url"><a class="quiet-btn" href="https://lens.google.com/" target="_blank" rel="noopener noreferrer">Open Google Lens</a></div><div class="field-hint">Upload your photo to Lens yourself, then paste a direct result image URL here and update the name above. Closet Studio does not send your photo. The link is saved on this device; the image stays on its original website.</div></div>
+      <div class="field" id="image-search-field" hidden>
+        <label for="search-image-online">Online image search</label>
+        <button class="quiet-btn" id="search-image-online" type="button">Find an online photo and title</button>
+        <div class="field-hint">When you tap Search, a resized copy of this photo is sent to Google Cloud Vision through Closet Studio's search service. Results may not be exact; review the image and title before saving.</div>
+        <p class="field-hint" id="image-search-status" role="status" aria-live="polite"></p>
+        <div class="field" id="image-search-results-field" hidden>
+          <label for="image-search-candidates">Possible matches</label>
+          <select id="image-search-candidates" aria-label="Possible matching images"></select>
+          <a class="field-hint" id="image-search-source" target="_blank" rel="noopener noreferrer" hidden>View source page</a>
+        </div>
+      </div>
+      <div class="field"><label for="item-image-url">Online image <span class="field-hint">(optional)</span></label><div class="online-search-row"><input type="url" id="item-image-url" placeholder="https://" inputmode="url"><a class="quiet-btn" href="https://lens.google.com/" target="_blank" rel="noopener noreferrer">Open Google Lens</a></div><div class="field-hint">Optional manual search: upload the photo to Google Lens yourself, then paste a direct result image URL and update the name above. The link is saved on this device; the image stays on its original website.</div></div>
       <div class="field"><label>Color <span class="field-hint" id="color-help">(sampled from your photo; adjust as needed)</span></label><div class="color-field"><input id="item-color" type="color" value="#d86d55" aria-label="Clothing color"><span class="field-hint" id="color-name">Warm coral</span></div></div>
       <div class="field"><label>Best in</label><div class="season-options"><label class="check-chip"><input type="checkbox" name="season" value="cool">Cool</label><label class="check-chip"><input type="checkbox" name="season" value="mild" checked>Mild</label><label class="check-chip"><input type="checkbox" name="season" value="warm">Warm</label></div></div>
       <div class="field"><label>Good for <span class="field-hint">(suggested automatically; adjust as needed)</span></label><div class="season-options" id="occasion-options"></div></div>
@@ -640,14 +651,16 @@
       sage: { color: '#f6f8f2' }
     };
     const ACCOUNT_KEY = 'closet-studio-local-account-v1';
-    const PRIVACY_VERSION = '2026-11-14-9';
+    const PRIVACY_VERSION = '2026-11-15-10';
     const PRIVACY_KEY = 'closet-studio-privacy-consent';
     const state = { items: [], favorites: [], appearance: { ...DEFAULT_APPEARANCE }, preferences: { ...DEFAULT_PREFERENCES }, category: 'All pieces', weather: 'all', mode: 'complementary', occasion: 'casual', query: '', outfit: null, editingId: null, pendingImage: null, temperatureUnit: 'C', account: null, initialized: false };
     const TRANSFORMERS_MODULE_URL = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.1';
     const BACKGROUND_REMOVAL_MODEL = 'studioludens/birefnet-lite-512';
+    const IMAGE_SEARCH_ENDPOINT = '';
     let backgroundRemovalPipelinePromise = null;
     let backgroundRemovalDevice = null;
     let backgroundRemovalForceCpu = false;
+    let imageSearchCandidates = [];
     const $ = (selector) => document.querySelector(selector);
     const $$ = (selector) => [...document.querySelectorAll(selector)];
 
@@ -861,6 +874,8 @@
       $('#item-type').addEventListener('change', () => { if (!state.editingId) setOccasionChecks(inferOccasions($('#item-name').value, $('#item-type').value)); });
       $('#item-name').addEventListener('input', () => { if (!state.editingId) setOccasionChecks(inferOccasions($('#item-name').value, $('#item-type').value)); });
       $('#item-image-url').addEventListener('input', previewOnlineImage);
+      $('#search-image-online').addEventListener('click', searchImageOnline);
+      $('#image-search-candidates').addEventListener('change', event => applyImageSearchCandidate(Number(event.target.value)));
       $('#item-form').addEventListener('submit', saveItem);
       $('#close-modal').addEventListener('click', closeModal);
       $('#cancel-modal').addEventListener('click', closeModal);
@@ -1277,6 +1292,15 @@
         $('#item-image-url').value = '';
         $('#item-name').value = file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ');
         $('#item-type').value = 'top';
+        $('#image-search-field').hidden = !phoneViewport;
+        $('#search-image-online').disabled = !IMAGE_SEARCH_ENDPOINT;
+        $('#image-search-status').textContent = IMAGE_SEARCH_ENDPOINT
+          ? 'Search is optional. Your photo is not sent until you tap the button.'
+          : 'Automatic search needs one-time service setup. For now, use Google Lens manually or save this photo.';
+        $('#image-search-results-field').hidden = true;
+        $('#image-search-candidates').replaceChildren();
+        $('#image-search-source').hidden = true;
+        imageSearchCandidates = [];
         setOccasionChecks(inferOccasions($('#item-name').value, $('#item-type').value));
         $('#item-color').value = prepared.color || '#d86d55';
         $('#color-name').textContent = describeColor($('#item-color').value);
@@ -1443,6 +1467,84 @@
         return null;
       }
     }
+    function normalizeImageSearchCandidates(values) {
+      if (!Array.isArray(values)) return [];
+      const candidates = [];
+      const seen = new Set();
+      values.forEach(value => {
+        const imageUrl = normalizeOnlineImageUrl(String(value?.imageUrl || ''));
+        const sourceUrl = normalizeOnlineImageUrl(String(value?.sourceUrl || ''));
+        const title = String(value?.title || '').replace(/\s+/g, ' ').trim().slice(0, 48);
+        if (!imageUrl || !title || seen.has(imageUrl)) return;
+        seen.add(imageUrl);
+        candidates.push({ imageUrl, sourceUrl: sourceUrl || '', title });
+      });
+      return candidates.slice(0, 8);
+    }
+    function inferItemType(name) {
+      const description = name.toLowerCase();
+      if (/\b(shoes?|sneakers?|boots?|loafers?|sandals?|heels?|flats?)\b/.test(description)) return 'shoes';
+      if (/\b(dress|dresses|gowns?|jumpsuits?|rompers?)\b/.test(description)) return 'dress';
+      if (/\b(jackets?|coats?|blazers?|cardigans?|vests?)\b/.test(description)) return 'jacket';
+      if (/\b(handbags?|bags?|belts?|hats?|scarf|scarves|scarfs|watch|watches|jewelry|jewellery|necklaces?|earrings?|sunglasses)\b/.test(description)) return 'accessory';
+      if (/\b(pants|trousers|jeans|shorts|skirts?|leggings)\b/.test(description)) return 'bottom';
+      return 'top';
+    }
+    async function searchImageOnline() {
+      if (!IMAGE_SEARCH_ENDPOINT || !state.pendingImage?.startsWith('data:image/')) {
+        toast('Online image search is not configured for this photo yet.');
+        return;
+      }
+      const button = $('#search-image-online');
+      button.disabled = true;
+      $('#image-search-status').textContent = 'Searching for matching clothing photos...';
+      $('#image-search-results-field').hidden = true;
+      try {
+        const imageData = state.pendingImage.slice(state.pendingImage.indexOf(',') + 1);
+        const response = await fetch(IMAGE_SEARCH_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: imageData })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || `Search service returned ${response.status}.`);
+        imageSearchCandidates = normalizeImageSearchCandidates(result.candidates);
+        if (!imageSearchCandidates.length) {
+          $('#image-search-status').textContent = 'No matching photos were found. Your uploaded photo is still ready to save.';
+          return;
+        }
+        const select = $('#image-search-candidates');
+        select.replaceChildren(...imageSearchCandidates.map((candidate, index) => {
+          const option = document.createElement('option');
+          const sourceHost = candidate.sourceUrl ? new URL(candidate.sourceUrl).hostname.replace(/^www\./, '') : 'image match';
+          option.value = String(index);
+          option.textContent = `${candidate.title} · ${sourceHost}`;
+          return option;
+        }));
+        $('#image-search-results-field').hidden = false;
+        select.value = '0';
+        applyImageSearchCandidate(0);
+        $('#image-search-status').textContent = 'Possible matches found. Review the image and title before saving.';
+      } catch (error) {
+        console.error('Online image search failed.', error);
+        $('#image-search-status').textContent = 'Online search failed. You can retry, use Google Lens manually, or save your uploaded photo.';
+      } finally {
+        button.disabled = !IMAGE_SEARCH_ENDPOINT;
+      }
+    }
+    function applyImageSearchCandidate(index) {
+      const candidate = imageSearchCandidates[index];
+      if (!candidate) return;
+      $('#item-name').value = candidate.title;
+      $('#item-type').value = inferItemType(candidate.title);
+      setOccasionChecks(inferOccasions(candidate.title, $('#item-type').value));
+      $('#item-image-url').value = candidate.imageUrl;
+      previewOnlineImage();
+      $('#modal-description').textContent = 'Possible match selected. Review the image and item details before saving.';
+      const source = $('#image-search-source');
+      source.hidden = !candidate.sourceUrl;
+      source.href = candidate.sourceUrl || '#';
+    }
     function previewOnlineImage() {
       const url = normalizeOnlineImageUrl($('#item-image-url').value);
       if (url) {
@@ -1469,6 +1571,8 @@
     function openEdit(id) {
       const item = state.items.find(entry => entry.id === id); if (!item) return;
       state.editingId = id; state.pendingImage = null;
+      $('#image-search-field').hidden = true;
+      imageSearchCandidates = [];
       $('#modal-title').textContent = 'Edit this piece'; $('#modal-description').textContent = 'Update the details, then select Save piece to keep your changes.'; $('#preview-image').src = item.image || svgArt(item.color, item.art || item.type);
       $('#item-image-url').value = item.image?.startsWith('https://') ? item.image : '';
       $('#item-name').value = item.name; $('#item-type').value = item.type; $('#item-color').value = item.color; $('#color-name').textContent = describeColor(item.color);
@@ -1476,7 +1580,7 @@
       $$('input[name="season"]').forEach(input => input.checked = (item.seasons || []).includes(input.value));
       $('#delete-item').hidden = false; $('#modal-backdrop').classList.add('open');
     }
-    function closeModal() { $('#modal-backdrop').classList.remove('open'); state.editingId = null; state.pendingImage = null; }
+    function closeModal() { $('#modal-backdrop').classList.remove('open'); $('#image-search-field').hidden = true; imageSearchCandidates = []; state.editingId = null; state.pendingImage = null; }
     function deleteEditingItem() { if (state.editingId) { removeItem(state.editingId); closeModal(); } }
     function removeItem(id) {
       const item = state.items.find(entry => entry.id === id); if (!item) return;
