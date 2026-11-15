@@ -591,7 +591,7 @@
   <div class="modal-backdrop" id="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <form class="modal" id="item-form">
       <div class="modal-head"><div><h3 id="modal-title">Add a piece</h3><p id="modal-description">Give this piece a place in your closet.</p></div><button class="close-btn" type="button" id="close-modal" aria-label="Close">×</button></div>
-      <div class="preview-row"><div class="preview-box"><img id="preview-image" alt="Clothing item preview"></div><div><div class="field"><label for="item-name">Name</label><input type="text" id="item-name" required maxlength="48" placeholder="e.g. Blue linen shirt"></div><div class="field"><label for="item-type">Type</label><select id="item-type"><option value="top">Top</option><option value="bottom">Bottom</option><option value="jacket">Jacket</option><option value="dress">Dress</option><option value="shoes">Shoes</option><option value="accessory">Accessory</option></select></div></div></div>
+      <div class="preview-row"><div class="preview-box"><img id="preview-image" alt="Clothing item preview"></div><div><div class="field"><label for="item-name">Name <span class="field-hint">(suggested from photo color and type; edit anytime)</span></label><input type="text" id="item-name" required maxlength="48" placeholder="e.g. Blue linen shirt"></div><div class="field"><label for="item-type">Type</label><select id="item-type"><option value="top">Top</option><option value="bottom">Bottom</option><option value="jacket">Jacket</option><option value="dress">Dress</option><option value="shoes">Shoes</option><option value="accessory">Accessory</option></select></div></div></div>
       <div class="field"><label>Color <span class="field-hint" id="color-help">(sampled from your photo; adjust as needed)</span></label><div class="color-field"><input id="item-color" type="color" value="#d86d55" aria-label="Clothing color"><span class="field-hint" id="color-name">Warm coral</span></div></div>
       <div class="field"><label>Best in</label><div class="season-options"><label class="check-chip"><input type="checkbox" name="season" value="cool">Cool</label><label class="check-chip"><input type="checkbox" name="season" value="mild" checked>Mild</label><label class="check-chip"><input type="checkbox" name="season" value="warm">Warm</label></div></div>
       <div class="field"><label>Good for <span class="field-hint">(suggested automatically; adjust as needed)</span></label><div class="season-options" id="occasion-options"></div></div>
@@ -645,6 +645,8 @@
     let backgroundRemovalPipelinePromise = null;
     let backgroundRemovalDevice = null;
     let backgroundRemovalForceCpu = false;
+    let generatedTitleIsColorBased = false;
+    let itemNameManuallyEdited = false;
     const $ = (selector) => document.querySelector(selector);
     const $$ = (selector) => [...document.querySelectorAll(selector)];
 
@@ -854,9 +856,21 @@
       $('#favorite-list').addEventListener('click', onFavoriteListClick);
       $$('.mode-btn').forEach(btn => btn.addEventListener('click', () => setMode(btn.dataset.mode)));
       $$('.nav-btn[data-view]').forEach(btn => btn.addEventListener('click', () => setView(btn.dataset.view)));
-      $('#item-color').addEventListener('input', event => { $('#color-name').textContent = describeColor(event.target.value); });
-      $('#item-type').addEventListener('change', () => { if (!state.editingId) setOccasionChecks(inferOccasions($('#item-name').value, $('#item-type').value)); });
-      $('#item-name').addEventListener('input', () => { if (!state.editingId) setOccasionChecks(inferOccasions($('#item-name').value, $('#item-type').value)); });
+      $('#item-color').addEventListener('input', event => {
+        $('#color-name').textContent = describeColor(event.target.value);
+        updateGeneratedPieceTitle();
+        if (!state.editingId) setOccasionChecks(inferOccasions($('#item-name').value, $('#item-type').value));
+      });
+      $('#item-type').addEventListener('change', () => {
+        updateGeneratedPieceTitle();
+        if (!state.editingId) setOccasionChecks(inferOccasions($('#item-name').value, $('#item-type').value));
+      });
+      $('#item-name').addEventListener('input', () => {
+        if (!state.editingId) {
+          itemNameManuallyEdited = true;
+          setOccasionChecks(inferOccasions($('#item-name').value, $('#item-type').value));
+        }
+      });
       $('#item-form').addEventListener('submit', saveItem);
       $('#close-modal').addEventListener('click', closeModal);
       $('#cancel-modal').addEventListener('click', closeModal);
@@ -1264,8 +1278,12 @@
           ? 'Background removed and photo cropped on this device. Confirm the details, then select Save piece.'
           : 'Background removal could not finish on this device. A compressed copy of your photo is ready to save.';
         $('#preview-image').src = prepared.image;
-        $('#item-name').value = file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ');
         $('#item-type').value = 'top';
+        generatedTitleIsColorBased = prepared.isolated && Boolean(prepared.color);
+        itemNameManuallyEdited = false;
+        $('#item-name').value = generatedTitleIsColorBased
+          ? generatePieceTitle($('#item-type').value, prepared.color)
+          : file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ');
         setOccasionChecks(inferOccasions($('#item-name').value, $('#item-type').value));
         $('#item-color').value = prepared.color || '#d86d55';
         $('#color-name').textContent = describeColor($('#item-color').value);
@@ -1429,6 +1447,11 @@
       }
     }
     function rgbToHex(r, g, b) { return '#' + [r,g,b].map(n => n.toString(16).padStart(2,'0')).join(''); }
+    function generatePieceTitle(type, color) { return `${describeColor(color)} ${type}`; }
+    function updateGeneratedPieceTitle() {
+      if (state.editingId || itemNameManuallyEdited || !generatedTitleIsColorBased) return;
+      $('#item-name').value = generatePieceTitle($('#item-type').value, $('#item-color').value);
+    }
     function inferOccasions(name, type) {
       const description = `${name} ${type}`.toLowerCase().replace(/[_-]+/g, ' ');
       if (/\b(activewear|athletic|gym|running|sport|workout|leggings|sneakers?)\b/.test(description)) return ['activewear'];
