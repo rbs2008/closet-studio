@@ -1247,17 +1247,22 @@
       event.target.value = '';
       if (!file) return;
       if (file.type && !file.type.toLowerCase().startsWith('image/')) { toast('Choose an image file to add a piece.'); return; }
-      $('#image-processing-title').textContent = 'Isolating your clothing';
-      $('#image-processing-status').textContent = 'Preparing photo on this device...';
+      const phoneViewport = document.documentElement.clientWidth <= 760;
+      $('#image-processing-title').textContent = phoneViewport ? 'Preparing your photo' : 'Isolating your clothing';
+      $('#image-processing-status').textContent = phoneViewport ? 'Optimizing your photo for your closet...' : 'Preparing photo on this device...';
       $('#image-processing-backdrop').classList.add('open');
       try {
         let prepared;
-        try {
-          prepared = await prepareClothingPhoto(file);
-        } catch (error) {
-          console.warn('Background removal failed; preparing the original photo instead.', error);
-          $('#image-processing-status').textContent = 'Background removal is unavailable. Preparing the original photo...';
+        if (phoneViewport) {
           prepared = await prepareOriginalPhoto(file);
+        } else {
+          try {
+            prepared = await prepareClothingPhoto(file);
+          } catch (error) {
+            console.warn('Background removal failed; preparing the original photo instead.', error);
+            $('#image-processing-status').textContent = 'Background removal is unavailable. Preparing the original photo...';
+            prepared = await prepareOriginalPhoto(file);
+          }
         }
         $('#image-processing-backdrop').classList.remove('open');
         state.pendingImage = prepared.image;
@@ -1265,7 +1270,9 @@
         $('#modal-title').textContent = 'Add a piece';
         $('#modal-description').textContent = prepared.isolated
           ? 'Photo ready. Confirm the details, then select Save piece to add it to your closet.'
-          : 'Background removal is unavailable on this device. The original photo is ready; select Save piece to add it to your closet.';
+          : phoneViewport
+            ? 'Background removal is skipped on phones for reliability. Your original photo is ready; select Save piece to add it to your closet.'
+            : 'Background removal is unavailable on this device. The original photo is ready; select Save piece to add it to your closet.';
         $('#preview-image').src = prepared.image;
         $('#item-image-url').value = '';
         $('#item-name').value = file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ');
@@ -1280,7 +1287,11 @@
         $('#delete-item').hidden = true;
         $('#modal-backdrop').classList.add('open');
         $('#item-name').focus();
-        if (!prepared.isolated) toast('Background removal failed. You can still save the original photo.');
+        if (!prepared.isolated) {
+          toast(phoneViewport
+            ? 'Your photo is ready. Save the original image to your closet.'
+            : 'Background removal failed. You can still save the original photo.');
+        }
       } catch (error) {
         console.error('Could not prepare the clothing photo.', error);
         $('#image-processing-backdrop').classList.remove('open');
