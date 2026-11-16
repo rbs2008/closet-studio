@@ -10,4 +10,4 @@ Closet Studio is a browser-based wardrobe organizer and outfit planner. Add clot
 2. Review or edit the suggested name, type, color, season, and occasions, then save the piece.
 3. Generate outfits from your saved wardrobe using occasion, weather, and color preferences. Save favorite combinations for later.
 
-Your wardrobe is stored in the browser on your device; it is not synced to an online account. Photo processing happens on-device. Some image formats and first-use features may require downloading a converter or model.
+Your wardrobe is stored in the browser on your device. Configure the optional Supabase backend and sign in to sync wardrobe data and compressed photos between devices. Photo preparation and classification happen on-device; some image formats and first-use features may require downloading a converter or model. See [cloud sync setup](./SUPABASE-SETUP.md).

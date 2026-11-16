@@ -262,7 +262,7 @@
     .account-backdrop.open { display: grid; animation: fade .16s; }
     .account-dialog { width: min(430px, 100%); max-height: min(90vh, 680px); overflow: auto; padding: 24px; border: 1px solid var(--soft-border); border-radius: 10px; background: var(--white); box-shadow: var(--shadow); }
     .account-dialog h2 { margin: 0; font: 400 25px/1.2 var(--serif); }
-    .account-intro, .account-note, .account-delete-copy { color: var(--muted); font-size: 12px; }
+    .account-intro, .account-note, .account-message { color: var(--muted); font-size: 12px; }
     .account-intro { margin: 5px 0 16px; }
     .account-note { margin: 0 0 14px; padding: 11px 12px; border-radius: 6px; background: var(--warning-bg); color: var(--warning-ink); }
     .account-field { margin-top: 12px; }
@@ -274,7 +274,8 @@
     .account-profile-name { font-weight: 700; }
     .account-profile-email { color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
     .delete-account-btn { border: 0; padding: 8px 0; background: transparent; color: var(--danger); cursor: pointer; font-size: 11px; text-decoration: underline; text-underline-offset: 3px; }
-    .account-delete-copy { margin: 12px 0 0; padding: 12px; border: 1px solid var(--soft-border); border-radius: 6px; background: var(--accent-soft); }
+    .account-message { margin: 12px 0 0; }
+    .account-message[data-error="true"] { color: var(--danger); }
     body.account-open { overflow: hidden; }
     .settings-view { padding: 30px 0 20px; }
     .settings-view[hidden], #page-head[hidden], #studio[hidden], #wardrobe[hidden] { display: none; }
@@ -521,16 +522,16 @@
             <div class="settings-actions"><button class="quiet-btn" id="preferences-reset" type="button">Reset preferences</button></div>
           </section>
           <section class="settings-panel" id="settings-panel-data" role="tabpanel" aria-labelledby="settings-tab-data" data-settings-panel="data" hidden>
-            <h2>Your data</h2><p>Your wardrobe stays in this browser on this device. Backups are created locally and are not uploaded.</p>
-            <div class="settings-note">A backup includes your saved clothing photos, favorites, local profile, and settings. Store the downloaded file somewhere private.</div>
+            <h2>Your data</h2><p>Your local copy remains available on this device. When signed in, wardrobe data and compressed photos also sync through your configured private cloud account.</p>
+            <div class="settings-note">A backup includes your saved clothing photos, favorites, profile, and settings. Store the downloaded file somewhere private.</div>
             <div class="settings-actions"><button class="primary-btn" id="export-data" type="button">Export backup</button><button class="quiet-btn" id="import-data" type="button">Import backup</button><input class="settings-file-input" id="import-file" type="file" accept="application/json,.json" aria-label="Choose a Closet Studio backup"></div>
             <div class="settings-actions"><button class="danger-btn" id="clear-data" type="button">Delete all local data</button></div>
             <p class="settings-note" id="settings-data-status" role="status" aria-live="polite" hidden></p>
           </section>
           <section class="settings-panel" id="settings-panel-privacy" role="tabpanel" aria-labelledby="settings-tab-privacy" data-settings-panel="privacy" hidden>
-            <h2>Privacy &amp; about</h2><p>Closet Studio is designed to work locally, without an online account or cloud sync.</p>
-            <dl class="settings-info"><dt>Storage</dt><dd>Your wardrobe, favorites, profile, and preferences are stored in this browser on this device.</dd><dt>Photos</dt><dd>Photos are compressed, cropped, and processed on this device; they are not sent to an image-search service.</dd><dt>App version</dt><dd>Closet Studio · Local edition</dd></dl>
-            <div class="settings-actions"><button class="quiet-btn" id="settings-review-privacy" type="button">Review privacy consent</button><button class="quiet-btn" id="settings-manage-profile" type="button">Manage local profile</button><a class="settings-link" href="./privacy-policy.html" target="_blank" rel="noopener">Privacy Policy</a></div>
+            <h2>Privacy &amp; about</h2><p>Closet Studio processes photos on this device. If you sign in, saved wardrobe data and compressed photos sync to your configured Supabase project.</p>
+            <dl class="settings-info"><dt>Storage</dt><dd>Your local copy is stored in this browser. Signed-in accounts can sync data to private, owner-restricted cloud storage.</dd><dt>Photos</dt><dd>Photos are prepared on this device and are never sent to an image-search service. Signed-in accounts upload the compressed saved photo to their private cloud closet.</dd><dt>App version</dt><dd>Closet Studio · Cloud sync edition</dd></dl>
+            <div class="settings-actions"><button class="quiet-btn" id="settings-review-privacy" type="button">Review privacy consent</button><button class="quiet-btn" id="settings-manage-profile" type="button">Manage account</button><a class="settings-link" href="./privacy-policy.html" target="_blank" rel="noopener">Privacy Policy</a></div>
           </section>
         </div>
       </section>
@@ -542,7 +543,7 @@
       <div class="privacy-kicker">A note about your closet</div>
       <h2 id="privacy-title">Your clothes stay yours.</h2>
       <p class="privacy-copy" id="privacy-copy">Before using Closet Studio, please review how the app handles your wardrobe information.</p>
-      <div class="privacy-summary">Your selected photo is compressed and analyzed on this device. Desktop background removal is optional; phones use a compressed photo for reliability. Closet Studio does not send it to an image-search service. First use downloads the clothing-type classifier; background removal and HEIC/HEIF conversion may download code or models when needed.</div>
+      <div class="privacy-summary">Photos are prepared and analyzed on this device. If you create an account, saved compressed photos, wardrobe details, favorites, and preferences are uploaded to the private cloud project configured for Closet Studio so you can sync between devices. The app does not send photos to an image-search service.</div>
       <a class="privacy-link" href="./privacy-policy.html" target="_blank" rel="noopener">Read the full Privacy Policy</a>
       <label class="privacy-checkbox" id="privacy-checkbox-label"><input id="privacy-checkbox" type="checkbox"><span>I have read and agree to the Privacy Policy.</span></label>
       <div class="privacy-actions" id="privacy-actions"><button class="privacy-decline" id="privacy-decline" type="button">I don't agree</button><button class="primary-btn" id="privacy-accept" type="button" disabled>Agree &amp; continue</button></div>
@@ -552,20 +553,25 @@
   <div class="account-backdrop" id="account-backdrop" role="dialog" aria-modal="true" aria-labelledby="account-title">
     <section class="account-dialog">
       <div class="modal-head"><div><h2 id="account-title">Your account</h2><p class="account-intro" id="account-intro">Manage your Closet Studio profile.</p></div><button class="close-btn" id="account-close" type="button" aria-label="Close account">×</button></div>
+      <div id="account-setup-required" hidden>
+        <p class="account-note">Cloud sync needs a Supabase project configured for this app. Your current wardrobe remains saved on this device.</p>
+        <a class="settings-link" href="https://github.com/rbs2008/closet-studio/blob/main/SUPABASE-SETUP.md" target="_blank" rel="noopener">Open cloud setup instructions</a>
+      </div>
       <form id="account-form">
-        <p class="account-note">This is a device-only profile, not an online login. Your name and email stay on this device and do not sync to other devices.</p>
-        <div class="account-field"><label for="account-name">Name</label><input id="account-name" name="name" type="text" autocomplete="name" maxlength="80" required></div>
-        <div class="account-field"><label for="account-email">Email</label><input id="account-email" name="email" type="email" autocomplete="email" maxlength="254" required></div>
-        <div class="account-actions"><button class="quiet-btn" id="account-cancel-create" type="button">Cancel</button><button class="primary-btn" type="submit">Create account</button></div>
+          <p class="account-note">Sign in on each device to sync your wardrobe and photos. Your compressed photos and closet details will be stored in the private cloud project configured for Closet Studio.</p>
+          <div class="account-field" id="account-name-field"><label for="account-name">Name</label><input id="account-name" name="name" type="text" autocomplete="name" maxlength="80" required></div>
+          <div class="account-field"><label for="account-email">Email</label><input id="account-email" name="email" type="email" autocomplete="email" maxlength="254" required></div>
+          <div class="account-field"><label for="account-password">Password</label><input id="account-password" name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></div>
+          <label class="privacy-checkbox" id="account-cloud-consent-wrap"><input id="account-cloud-consent" type="checkbox" required><span>I agree to store my wardrobe details and compressed clothing photos in the configured cloud account.</span></label>
+          <p class="account-message" id="account-message" role="status" aria-live="polite" hidden></p>
+          <div class="account-actions"><button class="quiet-btn" id="account-cancel-create" type="button">Cancel</button><button class="primary-btn" id="account-submit" type="submit">Create account</button></div>
+          <div class="account-actions"><button class="quiet-btn" id="account-mode-toggle" type="button">Already have an account? Sign in</button></div>
       </form>
       <div id="account-summary" hidden>
         <div class="account-profile"><div class="account-profile-mark" id="account-profile-mark">R</div><div><div class="account-profile-name" id="account-profile-name"></div><div class="account-profile-email" id="account-profile-email"></div></div></div>
-        <p class="account-note">This profile and your wardrobe are stored only in Closet Studio on this device. There is no password, online sign-in, or cloud sync.</p>
-        <div class="account-actions"><button class="quiet-btn" id="account-done" type="button">Done</button><button class="delete-account-btn" id="account-delete-start" type="button">Delete account</button></div>
-      </div>
-      <div id="account-delete-confirm" hidden>
-        <p class="account-delete-copy">This permanently deletes your local account profile, saved wardrobe items and photos, and favorite outfits from this device. This cannot be undone. Your separate privacy-policy consent record will remain.</p>
-        <div class="account-actions"><button class="quiet-btn" id="account-delete-cancel" type="button">Keep account</button><button class="primary-btn" id="account-delete-confirm-button" type="button">Delete account &amp; wardrobe</button></div>
+        <p class="account-note">Your account is signed in. Changes sync to your private cloud closet when you are online.</p>
+        <p class="account-message" id="account-sync-status" role="status" aria-live="polite"></p>
+        <div class="account-actions"><button class="quiet-btn" id="account-done" type="button">Done</button><div><button class="quiet-btn" id="account-retry-sync" type="button" hidden>Retry sync</button><button class="delete-account-btn" id="account-sign-out" type="button">Sign out</button></div></div>
       </div>
     </section>
   </div>
@@ -599,6 +605,7 @@
     </form>
   </div>
   <div class="toast" id="toast" role="status"></div>
+  <script src="./supabase-config.js"></script>
   <script>
     const CATEGORIES = ['All pieces', 'Top', 'Bottom', 'Jacket', 'Dress', 'Shoes', 'Accessory'];
     const OCCASIONS = [
@@ -637,7 +644,12 @@
       sage: { color: '#f6f8f2' }
     };
     const ACCOUNT_KEY = 'closet-studio-local-account-v1';
-    const PRIVACY_VERSION = '2026-11-15-14';
+    const CLOUD_DELETED_ITEMS_KEY = 'closet-studio-cloud-deleted-items-v1';
+    const CLOUD_DELETED_FAVORITES_KEY = 'closet-studio-cloud-deleted-favorites-v1';
+    const CLOUD_TABLE = 'closet_studio_sync';
+    const CLOUD_PHOTO_BUCKET = 'closet-studio-photos';
+    const SUPABASE_MODULE_URL = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    const PRIVACY_VERSION = '2026-11-16-15';
     const PRIVACY_KEY = 'closet-studio-privacy-consent';
     const state = { items: [], favorites: [], appearance: { ...DEFAULT_APPEARANCE }, preferences: { ...DEFAULT_PREFERENCES }, category: 'All pieces', weather: 'all', mode: 'complementary', occasion: 'casual', query: '', outfit: null, editingId: null, pendingImage: null, temperatureUnit: 'C', account: null, initialized: false };
     const TRANSFORMERS_MODULE_URL = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.1';
@@ -650,6 +662,20 @@
     let clothingClassificationPipelinePromise = null;
     let heicDecoderPromise = null;
     const heicConversions = new WeakMap();
+    let supabaseClientPromise = null;
+    let cloudUser = null;
+    let cloudRevision = 0;
+    let cloudSyncReady = false;
+    let cloudSyncTimer = null;
+    let cloudSyncQueue = Promise.resolve();
+    let cloudRefreshTimer = null;
+    let accountMode = 'signup';
+    let legacyProfile = null;
+    let cloudDeletedItems = new Set();
+    let cloudDeletedFavorites = new Set();
+    let cloudUserLoadingId = null;
+    let cloudUserLoadingPromise = null;
+    let cloudSyncError = '';
     let generatedTitleIsColorBased = false;
     let itemNameManuallyEdited = false;
     const $ = (selector) => document.querySelector(selector);
@@ -714,7 +740,7 @@
       applyColorMode(state.mode);
     }
     function persistPreferences() {
-      try { localStorage.setItem(PREFERENCES_KEY, JSON.stringify(state.preferences)); return true; }
+      try { localStorage.setItem(PREFERENCES_KEY, JSON.stringify(state.preferences)); scheduleCloudSync(); return true; }
       catch { toast('Could not save your preferences on this device.'); return false; }
     }
     function applyAppearance() {
@@ -737,20 +763,20 @@
         density: $('#appearance-density').value
       };
       applyAppearance();
-      try { localStorage.setItem(APPEARANCE_KEY, JSON.stringify(state.appearance)); }
+      try { localStorage.setItem(APPEARANCE_KEY, JSON.stringify(state.appearance)); scheduleCloudSync(); }
       catch { toast('Could not save appearance settings on this device.'); }
     }
     function selectPalette(palette) {
       if (!Object.prototype.hasOwnProperty.call(PALETTES, palette)) return;
       state.appearance.palette = palette;
       applyAppearance();
-      try { localStorage.setItem(APPEARANCE_KEY, JSON.stringify(state.appearance)); }
+      try { localStorage.setItem(APPEARANCE_KEY, JSON.stringify(state.appearance)); scheduleCloudSync(); }
       catch { toast('Could not save appearance settings on this device.'); }
     }
     function resetAppearance() {
       state.appearance = { ...DEFAULT_APPEARANCE };
       applyAppearance();
-      try { localStorage.setItem(APPEARANCE_KEY, JSON.stringify(state.appearance)); }
+      try { localStorage.setItem(APPEARANCE_KEY, JSON.stringify(state.appearance)); scheduleCloudSync(); }
       catch { toast('Could not save appearance settings on this device.'); }
     }
     function setSettingsTab(tab, updateHash = true) {
@@ -823,7 +849,7 @@
           Object.values(favorite.outfit).filter(Boolean).every(id => state.items.some(item => item.id === id))
         ) : [];
       } catch { state.favorites = []; }
-      try { state.account = JSON.parse(localStorage.getItem(ACCOUNT_KEY)); } catch { state.account = null; }
+      try { legacyProfile = JSON.parse(localStorage.getItem(ACCOUNT_KEY)); } catch { legacyProfile = null; }
       updateAccountButton();
       renderAll();
       $('#category-tabs').addEventListener('click', onCategoryClick);
@@ -885,10 +911,10 @@
       $('#account-close').addEventListener('click', closeAccountDialog);
       $('#account-cancel-create').addEventListener('click', closeAccountDialog);
       $('#account-done').addEventListener('click', closeAccountDialog);
-      $('#account-form').addEventListener('submit', createLocalAccount);
-      $('#account-delete-start').addEventListener('click', showAccountDeleteConfirmation);
-      $('#account-delete-cancel').addEventListener('click', renderAccountDialog);
-      $('#account-delete-confirm-button').addEventListener('click', deleteLocalAccount);
+      $('#account-form').addEventListener('submit', submitCloudAccountForm);
+      $('#account-mode-toggle').addEventListener('click', () => setAccountMode(accountMode === 'signup' ? 'signin' : 'signup'));
+      $('#account-sign-out').addEventListener('click', signOutCloudAccount);
+      $('#account-retry-sync').addEventListener('click', retryCloudSync);
       $('#account-backdrop').addEventListener('click', event => { if (event.target.id === 'account-backdrop') closeAccountDialog(); });
       $('#appearance-reset').addEventListener('click', resetAppearance);
       $('#appearance-theme').addEventListener('change', updateAppearance);
@@ -936,6 +962,7 @@
       $('#settings-manage-profile').addEventListener('click', openAccountDialog);
       updateWeather();
       loadFavoriteFromLocation();
+      void initializeCloudAuth();
       if (location.hash === '#appearance') openSettings('appearance');
       else if (location.hash.startsWith('#settings-')) openSettings(location.hash.slice('#settings-'.length));
     }
@@ -956,7 +983,9 @@
       renderAccountDialog();
       $('#account-backdrop').classList.add('open');
       document.body.classList.add('account-open');
-      if (state.account) $('#account-done').focus(); else $('#account-name').focus();
+      if (state.account) $('#account-done').focus();
+      else if ($('#account-form').hidden) $('#account-close').focus();
+      else (accountMode === 'signup' ? $('#account-name') : $('#account-email')).focus();
     }
     function closeAccountDialog() {
       $('#account-backdrop').classList.remove('open');
@@ -965,56 +994,528 @@
     }
     function renderAccountDialog() {
       const hasAccount = Boolean(state.account);
-      $('#account-form').hidden = hasAccount;
+      const configured = isSupabaseConfigured();
+      $('#account-setup-required').hidden = configured || hasAccount;
+      $('#account-form').hidden = !configured || hasAccount;
       $('#account-summary').hidden = !hasAccount;
-      $('#account-delete-confirm').hidden = true;
-      $('#account-intro').textContent = hasAccount ? 'Your device-only profile.' : 'Create a local profile for this device.';
+      $('#account-intro').textContent = hasAccount ? 'Your Closet Studio cloud account.' : configured ? 'Sign in to sync your closet between devices.' : 'Set up cloud sync.';
       if (hasAccount) {
         $('#account-profile-name').textContent = state.account.name;
         $('#account-profile-email').textContent = state.account.email;
         $('#account-profile-mark').textContent = state.account.name.trim().charAt(0).toUpperCase() || 'C';
+        $('#account-sync-status').textContent = cloudSyncReady ? 'Cloud sync is up to date.' : cloudSyncError || 'Connecting to your cloud closet...';
+        $('#account-retry-sync').hidden = !cloudSyncError;
+        $('#account-sign-out').disabled = false;
       }
+      setAccountMode(accountMode, false);
     }
     function updateAccountButton() {
       const name = state.account?.name?.trim() || '';
       $('#account-button').textContent = name ? name.charAt(0).toUpperCase() : 'C';
-      $('#account-button').setAttribute('aria-label', name ? `Account for ${name}` : 'Create or manage account');
+      $('#account-button').setAttribute('aria-label', name ? `Account for ${name}` : 'Sign in to sync your closet');
     }
-    function createLocalAccount(event) {
+    function setAccountMode(mode, updateForm = true) {
+      accountMode = mode;
+      const signingUp = mode === 'signup';
+      $('#account-name-field').hidden = !signingUp;
+      $('#account-name').required = signingUp;
+      $('#account-name').autocomplete = signingUp ? 'name' : 'off';
+      $('#account-password').autocomplete = signingUp ? 'new-password' : 'current-password';
+      $('#account-cloud-consent-wrap').hidden = !signingUp;
+      $('#account-cloud-consent').required = signingUp;
+      $('#account-submit').textContent = signingUp ? 'Create account' : 'Sign in';
+      $('#account-mode-toggle').textContent = signingUp ? 'Already have an account? Sign in' : 'New to Closet Studio? Create account';
+      if (updateForm) {
+        $('#account-message').hidden = true;
+        $('#account-password').value = '';
+      }
+    }
+    function setAccountMessage(message, isError = false) {
+      const status = $('#account-message');
+      status.textContent = message;
+      status.hidden = !message;
+      status.dataset.error = String(isError);
+    }
+    function isSupabaseConfigured() {
+      const config = window.CLOSET_STUDIO_SUPABASE_CONFIG;
+      if (!config || typeof config.url !== 'string' || typeof config.publishableKey !== 'string' || config.publishableKey.length < 20) return false;
+      try {
+        const url = new URL(config.url);
+        return (url.protocol === 'https:' || url.hostname === 'localhost') && Boolean(url.host);
+      } catch {
+        return false;
+      }
+    }
+    async function getSupabaseClient() {
+      if (!isSupabaseConfigured()) throw new Error('Cloud sync is not configured for this app yet.');
+      if (!supabaseClientPromise) {
+        supabaseClientPromise = (async () => {
+          const { createClient } = await import(SUPABASE_MODULE_URL);
+          const config = window.CLOSET_STUDIO_SUPABASE_CONFIG;
+          return createClient(config.url, config.publishableKey, {
+            auth: { flowType: 'pkce', autoRefreshToken: true, persistSession: true, detectSessionInUrl: true }
+          });
+        })().catch(error => {
+          supabaseClientPromise = null;
+          throw error;
+        });
+      }
+      return supabaseClientPromise;
+    }
+    async function initializeCloudAuth() {
+      renderAccountDialog();
+      if (!isSupabaseConfigured()) return;
+      try {
+        const client = await getSupabaseClient();
+        const { data, error } = await client.auth.getSession();
+        if (error) throw error;
+        await handleCloudUser(data.session?.user || null);
+        client.auth.onAuthStateChange((_event, session) => {
+          setTimeout(() => { void handleCloudUser(session?.user || null); }, 0);
+        });
+        window.addEventListener('focus', refreshCloudCloset);
+        window.addEventListener('online', refreshCloudCloset);
+        if (cloudRefreshTimer) clearInterval(cloudRefreshTimer);
+        cloudRefreshTimer = setInterval(refreshCloudCloset, 30000);
+      } catch (error) {
+        console.error('Could not initialize cloud sync.', error);
+        setAccountMessage(`Could not connect to cloud sync: ${error.message}`, true);
+      }
+    }
+    async function handleCloudUser(user) {
+      if (!user) {
+        cloudUser = null;
+        cloudSyncReady = false;
+        cloudRevision = 0;
+        cloudUserLoadingId = null;
+        cloudUserLoadingPromise = null;
+        state.account = null;
+        cloudDeletedItems = new Set();
+        cloudDeletedFavorites = new Set();
+        updateAccountButton();
+        if ($('#account-backdrop').classList.contains('open')) renderAccountDialog();
+        return;
+      }
+      if (cloudUser?.id === user.id && cloudSyncReady) return;
+      if (cloudUserLoadingId === user.id && cloudUserLoadingPromise) return cloudUserLoadingPromise;
+      cloudUser = user;
+      cloudSyncReady = false;
+      cloudSyncError = '';
+      const email = user.email || '';
+      const name = user.user_metadata?.full_name || legacyProfile?.name || email.split('@')[0] || 'Closet Studio member';
+      state.account = { name, email, createdAt: user.created_at || new Date().toISOString() };
+      cloudDeletedItems = readDeletedIds(CLOUD_DELETED_ITEMS_KEY, user.id);
+      cloudDeletedFavorites = readDeletedIds(CLOUD_DELETED_FAVORITES_KEY, user.id);
+      updateAccountButton();
+      if ($('#account-backdrop').classList.contains('open')) renderAccountDialog();
+      cloudUserLoadingId = user.id;
+      cloudUserLoadingPromise = (async () => {
+        try {
+          await loadAndMergeCloudCloset(user);
+          if (!cloudUser || cloudUser.id !== user.id) return;
+          cloudSyncReady = true;
+          cloudSyncError = '';
+          renderAccountDialog();
+          updateAccountButton();
+          setAccountMessage('');
+          toast('Your cloud closet is ready on this device.');
+        } catch (error) {
+          cloudSyncReady = false;
+          cloudSyncError = `Cloud sync failed: ${error.message}`;
+          console.error('Could not load the cloud closet.', error);
+          $('#account-sync-status').textContent = cloudSyncError;
+          toast(`Could not sync your closet: ${error.message}`);
+        } finally {
+          if (cloudUserLoadingId === user.id) {
+            cloudUserLoadingId = null;
+            cloudUserLoadingPromise = null;
+          }
+        }
+      })();
+      return cloudUserLoadingPromise;
+    }
+    async function submitCloudAccountForm(event) {
       event.preventDefault();
+      if (!isSupabaseConfigured()) {
+        renderAccountDialog();
+        return;
+      }
       const name = $('#account-name').value.trim();
       const email = $('#account-email').value.trim();
-      if (!name || !email) return;
-      state.account = { name, email, createdAt: new Date().toISOString() };
-      try { localStorage.setItem(ACCOUNT_KEY, JSON.stringify(state.account)); }
-      catch { state.account = null; toast('Could not save this profile on the device.'); return; }
-      updateAccountButton();
-      renderAccountDialog();
-      toast('Local account created.');
-    }
-    function showAccountDeleteConfirmation() {
-      $('#account-summary').hidden = true;
-      $('#account-delete-confirm').hidden = false;
-      $('#account-delete-confirm-button').focus();
-    }
-    function deleteLocalAccount() {
+      const password = $('#account-password').value;
+      if (!email || !password || (accountMode === 'signup' && (!name || !$('#account-cloud-consent').checked))) return;
+      const submit = $('#account-submit');
+      submit.disabled = true;
+      setAccountMessage(accountMode === 'signup' ? 'Creating your account...' : 'Signing in...');
       try {
-        localStorage.setItem(STORAGE_KEY, '[]');
-        localStorage.removeItem(FAVORITES_KEY);
-        localStorage.removeItem(ACCOUNT_KEY);
-      } catch { toast('Could not delete account data from this device.'); return; }
-      state.account = null;
-      state.items = [];
-      state.favorites = [];
+        const client = await getSupabaseClient();
+        if (accountMode === 'signup') {
+          const { data, error } = await client.auth.signUp({
+            email,
+            password,
+            options: {
+              data: { full_name: name },
+              emailRedirectTo: `${location.origin}${location.pathname}`
+            }
+          });
+          if (error) throw error;
+          legacyProfile = { name, email, createdAt: new Date().toISOString() };
+          if (!data.session) {
+            setAccountMessage('Check your email to confirm your account, then return here and sign in.');
+            return;
+          }
+          await handleCloudUser(data.user);
+        } else {
+          const { data, error } = await client.auth.signInWithPassword({ email, password });
+          if (error) throw error;
+          await handleCloudUser(data.user);
+        }
+        if (cloudSyncReady) {
+          renderAccountDialog();
+          toast('Signed in. Your closet is synced.');
+        }
+      } catch (error) {
+        console.error('Cloud account sign-in failed.', error);
+        setAccountMessage(error.message || 'Could not sign in. Check your connection and account details.', true);
+      } finally {
+        submit.disabled = false;
+      }
+    }
+    async function signOutCloudAccount() {
+      if (!cloudUser) return;
+      const button = $('#account-sign-out');
+      const userId = cloudUser.id;
+      button.disabled = true;
+      try {
+        const synced = cloudSyncReady;
+        if (synced) await writeCloudCloset();
+        const client = await getSupabaseClient();
+        const { error } = await client.auth.signOut();
+        if (error) throw error;
+        if (synced) {
+          clearCloudLocalCache(userId);
+          state.items = SAMPLE_ITEMS.map(item => ({ ...item }));
+          state.favorites = [];
+          state.outfit = null;
+          state.appearance = { ...DEFAULT_APPEARANCE };
+          state.preferences = { ...DEFAULT_PREFERENCES };
+          state.occasion = state.preferences.defaultOccasion;
+          state.mode = state.preferences.colorMode;
+          state.weather = state.preferences.weatherFilter;
+          state.temperatureUnit = state.preferences.temperatureUnit;
+          applyAppearance();
+          loadPreferences();
+        }
+        state.account = null;
+        renderAll();
+        updateAccountButton();
+        renderAccountDialog();
+        if (!synced) toast('Signed out. Your unsynced local data was kept on this device.');
+      } catch (error) {
+        console.error('Could not sign out cleanly.', error);
+        $('#account-sync-status').textContent = `Could not sign out safely: ${error.message}`;
+        toast(`Could not sign out: ${error.message}`);
+      } finally {
+        button.disabled = false;
+      }
+    }
+    function userScopedKey(key, userId) { return `${key}:${userId}`; }
+    function readDeletedIds(key, userId) {
+      try {
+        const values = JSON.parse(localStorage.getItem(userScopedKey(key, userId)));
+        return new Set(Array.isArray(values) ? values.filter(value => typeof value === 'string') : []);
+      } catch {
+        return new Set();
+      }
+    }
+    function saveCloudTombstones() {
+      if (!cloudUser) return;
+      try {
+        localStorage.setItem(userScopedKey(CLOUD_DELETED_ITEMS_KEY, cloudUser.id), JSON.stringify([...cloudDeletedItems]));
+        localStorage.setItem(userScopedKey(CLOUD_DELETED_FAVORITES_KEY, cloudUser.id), JSON.stringify([...cloudDeletedFavorites]));
+      } catch (error) {
+        console.error('Could not cache cloud deletion markers on this device.', error);
+        setSettingsStatus('Cloud sync needs browser storage for pending deletions. Free space in this browser and try again.');
+      }
+    }
+    function clearCloudLocalCache(userId = cloudUser?.id) {
+      const keys = [STORAGE_KEY, FAVORITES_KEY, ACCOUNT_KEY, APPEARANCE_KEY, PREFERENCES_KEY];
+      if (userId) keys.push(userScopedKey(CLOUD_DELETED_ITEMS_KEY, userId), userScopedKey(CLOUD_DELETED_FAVORITES_KEY, userId));
+      keys.forEach(key => localStorage.removeItem(key));
+    }
+    function saveLocalCloudState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state.items));
+        localStorage.setItem(FAVORITES_KEY, JSON.stringify(state.favorites));
+        localStorage.setItem(APPEARANCE_KEY, JSON.stringify(state.appearance));
+        localStorage.setItem(PREFERENCES_KEY, JSON.stringify(state.preferences));
+        saveCloudTombstones();
+      } catch (error) {
+        console.error('Could not cache the cloud closet on this device.', error);
+        const message = 'Your cloud closet is available, but this browser could not save an offline copy. Free browser storage to keep it available offline.';
+        setSettingsStatus(message);
+        if ($('#account-sync-status')) $('#account-sync-status').textContent = message;
+      }
+    }
+    function applyCloudSettings(appearance, preferences) {
+      state.appearance = {
+        theme: appearance?.theme === 'dark' ? 'dark' : 'light',
+        palette: Object.prototype.hasOwnProperty.call(PALETTES, appearance?.palette) ? appearance.palette : DEFAULT_APPEARANCE.palette,
+        density: appearance?.density === 'compact' ? 'compact' : 'comfortable'
+      };
+      state.preferences = {
+        defaultOccasion: OCCASIONS.some(entry => entry.id === preferences?.defaultOccasion) ? preferences.defaultOccasion : DEFAULT_PREFERENCES.defaultOccasion,
+        colorMode: Object.prototype.hasOwnProperty.call(MODES, preferences?.colorMode) ? preferences.colorMode : DEFAULT_PREFERENCES.colorMode,
+        temperatureUnit: preferences?.temperatureUnit === 'F' ? 'F' : 'C',
+        weatherFilter: ['all', 'cool', 'mild', 'warm'].includes(preferences?.weatherFilter) ? preferences.weatherFilter : DEFAULT_PREFERENCES.weatherFilter
+      };
+      applyAppearance();
+      loadPreferences();
+    }
+    async function readCloudRow(userId) {
+      const client = await getSupabaseClient();
+      const { data, error } = await client.from(CLOUD_TABLE)
+        .select('payload,revision,updated_at')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    }
+    async function hydrateCloudPayload(payload, userId) {
+      if (!payload || payload.version !== 1 || !Array.isArray(payload.items) || !Array.isArray(payload.favorites)) {
+        throw new Error('The saved cloud closet has an unsupported format.');
+      }
+      const paths = [...new Set(payload.items.map(item => item?.imagePath).filter(Boolean))];
+      if (paths.some(path => typeof path !== 'string' || path.split('/').length !== 2 || path.split('/')[0] !== userId)) {
+        throw new Error('The cloud closet contains an invalid photo path.');
+      }
+      const signedImages = new Map();
+      if (paths.length) {
+        const client = await getSupabaseClient();
+        const { data, error } = await client.storage.from(CLOUD_PHOTO_BUCKET).createSignedUrls(paths, 60 * 60 * 24 * 7);
+        if (error) throw error;
+        (data || []).forEach(image => {
+          if (image.path && image.signedUrl) signedImages.set(image.path, image.signedUrl);
+        });
+        if (signedImages.size !== paths.length) throw new Error('Could not access every saved wardrobe photo.');
+      }
+      const items = payload.items.map(item => ({
+        ...item,
+        image: item.imagePath ? signedImages.get(item.imagePath) : item.imageUrl || null,
+        sample: false
+      }));
+      const validated = validateBackup({
+        format: 'closet-studio-backup',
+        version: 1,
+        items,
+        favorites: payload.favorites,
+        appearance: payload.appearance,
+        preferences: payload.preferences,
+        account: null
+      });
+      return {
+        ...validated,
+        deletedItemIds: Array.isArray(payload.deletedItemIds) ? payload.deletedItemIds.filter(id => typeof id === 'string') : [],
+        deletedFavoriteIds: Array.isArray(payload.deletedFavoriteIds) ? payload.deletedFavoriteIds.filter(id => typeof id === 'string') : []
+      };
+    }
+    function mergeCloudItems(remoteItems, localItems) {
+      const merged = new Map(remoteItems.map(item => [item.id, { ...item, sample: false }]));
+      localItems.filter(item => item && !item.sample && !cloudDeletedItems.has(item.id)).forEach(item => {
+        const remote = merged.get(item.id);
+        const localImageIsPortable = typeof item.image === 'string' && item.image.startsWith('data:image/');
+        merged.set(item.id, {
+          ...remote,
+          ...item,
+          image: localImageIsPortable ? item.image : remote?.image || item.image || null,
+          imagePath: item.imagePath || remote?.imagePath || null,
+          sample: false
+        });
+      });
+      return [...merged.values()].filter(item => !cloudDeletedItems.has(item.id));
+    }
+    function mergeCloudFavorites(remoteFavorites, localFavorites, items) {
+      const merged = new Map(remoteFavorites.map(favorite => [favorite.id, favorite]));
+      localFavorites.forEach(favorite => {
+        if (favorite && !cloudDeletedFavorites.has(favorite.id)) merged.set(favorite.id, favorite);
+      });
+      const itemIds = new Set(items.map(item => item.id));
+      return [...merged.values()].filter(favorite =>
+        !cloudDeletedFavorites.has(favorite.id) &&
+        Object.values(favorite.outfit || {}).filter(Boolean).every(id => itemIds.has(id))
+      );
+    }
+    function mergeCloudDeletions(payload) {
+      payload.deletedItemIds.forEach(id => cloudDeletedItems.add(id));
+      payload.deletedFavoriteIds.forEach(id => cloudDeletedFavorites.add(id));
+      saveCloudTombstones();
+    }
+    async function applyCloudRow(row, userId, includeLocal, preferLocalSettings) {
+      const remote = await hydrateCloudPayload(row.payload, userId);
+      mergeCloudDeletions(remote);
+      const localItems = includeLocal ? state.items : [];
+      const localFavorites = includeLocal ? state.favorites : [];
+      state.items = mergeCloudItems(remote.items, localItems);
+      state.favorites = mergeCloudFavorites(remote.favorites, localFavorites, state.items);
+      if (!preferLocalSettings) applyCloudSettings(remote.appearance, remote.preferences);
       state.outfit = null;
-      $('#account-form').reset();
-      renderAll();
+      cloudRevision = Number(row.revision) || 0;
+      saveLocalCloudState();
       updateAccountButton();
-      closeAccountDialog();
-      toast('Account and saved wardrobe deleted from this device.');
+      renderAll();
+      loadFavoriteFromLocation();
+    }
+    async function loadAndMergeCloudCloset(user) {
+      const row = await readCloudRow(user.id);
+      if (!cloudUser || cloudUser.id !== user.id) return;
+      if (row) {
+        await applyCloudRow(row, user.id, true, false);
+      } else {
+        state.items = state.items.filter(item => !item.sample && !cloudDeletedItems.has(item.id));
+        state.favorites = state.favorites.filter(favorite => !cloudDeletedFavorites.has(favorite.id));
+        state.favorites = mergeCloudFavorites([], state.favorites, state.items);
+        saveLocalCloudState();
+        cloudRevision = 0;
+      }
+      await writeCloudCloset();
+    }
+    function scheduleCloudSync() {
+      if (!cloudUser || !cloudSyncReady || cloudSyncTimer) return;
+      cloudSyncTimer = setTimeout(() => {
+        cloudSyncTimer = null;
+        writeCloudCloset().catch(reportCloudSyncFailure);
+      }, 700);
+    }
+    function reportCloudSyncFailure(error) {
+      console.error('Could not save changes to the cloud closet.', error);
+      const message = `Saved on this device, but cloud sync failed: ${error.message}`;
+      cloudSyncError = message;
+      const status = $('#account-sync-status');
+      if (status) status.textContent = message;
+      $('#account-retry-sync').hidden = false;
+      setSettingsStatus(message);
+    }
+    async function retryCloudSync() {
+      if (!cloudUser) return;
+      const button = $('#account-retry-sync');
+      button.disabled = true;
+      cloudSyncError = '';
+      try {
+        if (cloudSyncReady) await writeCloudCloset();
+        else await handleCloudUser(cloudUser);
+      } catch (error) {
+        reportCloudSyncFailure(error);
+      } finally {
+        button.disabled = false;
+      }
+    }
+    function writeCloudCloset() {
+      if (!cloudUser) return Promise.resolve();
+      const userId = cloudUser.id;
+      const operation = () => performCloudWrite(userId);
+      cloudSyncQueue = cloudSyncQueue.then(operation, operation);
+      return cloudSyncQueue;
+    }
+    async function prepareCloudItems(userId) {
+      const client = await getSupabaseClient();
+      const items = [];
+      for (const item of state.items.filter(entry => entry && !entry.sample && !cloudDeletedItems.has(entry.id))) {
+        const copy = { ...item, sample: false };
+        if (typeof copy.image === 'string' && copy.image.startsWith('data:image/')) {
+          const blob = await (await fetch(copy.image)).blob();
+          if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(blob.type)) {
+            throw new Error('A saved photo uses an unsupported format for cloud sync.');
+          }
+          if (blob.size > 10 * 1024 * 1024) throw new Error('A saved photo is too large for cloud storage.');
+          const randomId = window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          const path = copy.imagePath || `${userId}/${randomId}`;
+          if (path.split('/').length !== 2 || path.split('/')[0] !== userId) throw new Error('A saved photo has an invalid cloud path.');
+          const { error } = await client.storage.from(CLOUD_PHOTO_BUCKET).upload(path, blob, {
+            contentType: blob.type,
+            upsert: true,
+            cacheControl: '3600'
+          });
+          if (error) throw error;
+          copy.imagePath = path;
+          delete copy.image;
+        } else if (copy.imagePath) {
+          if (copy.imagePath.split('/').length !== 2 || copy.imagePath.split('/')[0] !== userId) throw new Error('A saved photo has an invalid cloud path.');
+          delete copy.image;
+        } else if (typeof copy.image === 'string' && copy.image.startsWith('https://')) {
+          copy.imageUrl = copy.image;
+          delete copy.image;
+        } else {
+          copy.imagePath = null;
+          delete copy.image;
+        }
+        items.push(copy);
+      }
+      const byId = new Map(items.map(item => [item.id, item]));
+      state.items = state.items.map(item => {
+        const cloudItem = byId.get(item.id);
+        return item.sample || !cloudItem ? item : { ...item, imagePath: cloudItem.imagePath || null };
+      });
+      return items;
+    }
+    async function performCloudWrite(userId) {
+      if (!cloudUser || cloudUser.id !== userId) return;
+      const client = await getSupabaseClient();
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const latest = await readCloudRow(userId);
+        if (latest && Number(latest.revision) > cloudRevision) {
+          await applyCloudRow(latest, userId, true, true);
+        }
+        const items = await prepareCloudItems(userId);
+        const payload = {
+          version: 1,
+          items,
+          favorites: state.favorites.filter(favorite => !cloudDeletedFavorites.has(favorite.id)),
+          appearance: state.appearance,
+          preferences: state.preferences,
+          deletedItemIds: [...cloudDeletedItems],
+          deletedFavoriteIds: [...cloudDeletedFavorites]
+        };
+        saveLocalCloudState();
+        const nextRevision = (latest ? Number(latest.revision) : 0) + 1;
+        const row = { user_id: userId, payload, revision: nextRevision, updated_at: new Date().toISOString() };
+        if (latest) {
+          const { data, error } = await client.from(CLOUD_TABLE).update(row)
+            .eq('user_id', userId)
+            .eq('revision', Number(latest.revision))
+            .select('revision')
+            .maybeSingle();
+          if (error) throw error;
+          if (!data) continue;
+        } else {
+          const { error } = await client.from(CLOUD_TABLE).insert(row);
+          if (error?.code === '23505') continue;
+          if (error) throw error;
+        }
+        cloudRevision = nextRevision;
+        cloudSyncError = '';
+        $('#account-retry-sync').hidden = true;
+        $('#account-sync-status').textContent = `Synced just now · ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+        setSettingsStatus('Your cloud closet is up to date.');
+        return;
+      }
+      throw new Error('Your closet changed on another device repeatedly. Keep this page open and try again.');
+    }
+    async function refreshCloudCloset() {
+      if (!cloudUser || !cloudSyncReady || cloudSyncTimer || !navigator.onLine) return;
+      try {
+        const row = await readCloudRow(cloudUser.id);
+        if (!cloudUser || !row || Number(row.revision) <= cloudRevision) return;
+        await applyCloudRow(row, cloudUser.id, false, false);
+        $('#account-sync-status').textContent = 'Updated from your other device.';
+      } catch (error) {
+        console.error('Could not refresh the cloud closet.', error);
+        cloudSyncError = `Could not refresh cloud data: ${error.message}`;
+        $('#account-sync-status').textContent = cloudSyncError;
+        $('#account-retry-sync').hidden = false;
+      }
     }
     function persist(items = state.items) {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); return true; }
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); scheduleCloudSync(); return true; }
       catch (error) {
         console.error('Could not save the closet on this device.', error);
         toast('Could not save your closet on this device. Free browser storage or remove a saved photo, then try again.');
@@ -1133,10 +1634,19 @@
       try {
         const backup = validateBackup(JSON.parse(await file.text()));
         if (!window.confirm('Importing this backup replaces the current wardrobe, favorites, profile, and settings on this device. Continue?')) return;
+        if (cloudUser) {
+          const itemIds = new Set(backup.items.map(item => item.id));
+          state.items.filter(item => !item.sample && !itemIds.has(item.id)).forEach(item => cloudDeletedItems.add(item.id));
+          backup.items.forEach(item => cloudDeletedItems.delete(item.id));
+          const favoriteIds = new Set(backup.favorites.map(favorite => favorite.id));
+          state.favorites.filter(favorite => !favoriteIds.has(favorite.id)).forEach(favorite => cloudDeletedFavorites.add(favorite.id));
+          backup.favorites.forEach(favorite => cloudDeletedFavorites.delete(favorite.id));
+          saveCloudTombstones();
+        }
         saveImportedBackup(backup);
         state.items = backup.items;
         state.favorites = backup.favorites;
-        state.account = backup.account;
+        legacyProfile = backup.account;
         state.outfit = null;
         state.appearance = { ...backup.appearance };
         state.preferences = { ...backup.preferences };
@@ -1156,6 +1666,7 @@
         updateOccasionLabel();
         renderAll();
         updateWeather();
+        scheduleCloudSync();
         setSettingsStatus('Backup imported. Your previous local data was replaced.');
         toast('Closet Studio backup imported.');
       } catch (error) {
@@ -1167,6 +1678,10 @@
       }
     }
     function clearLocalData() {
+      if (cloudUser) {
+        setSettingsStatus('Sign out before clearing this device. Your cloud closet is managed separately and will remain in your account.');
+        return;
+      }
       if (!window.confirm('Delete your saved wardrobe, clothing photos, favorites, local profile, and preferences from Closet Studio on this device? This cannot be undone. Your privacy-consent record will remain, and downloaded backup files will not be deleted.')) return;
       try {
         localStorage.setItem(STORAGE_KEY, '[]');
@@ -1179,7 +1694,7 @@
       }
       state.items = [];
       state.favorites = [];
-      state.account = null;
+      if (!cloudUser) state.account = null;
       state.outfit = null;
       state.category = 'All pieces';
       state.query = '';
@@ -1625,8 +2140,16 @@
       state.items = state.items.filter(entry => entry.id !== id);
       const retainedFavorites = state.favorites.filter(favorite => !Object.values(favorite.outfit || {}).includes(id));
       if (retainedFavorites.length !== state.favorites.length) {
+        if (cloudUser) {
+          state.favorites.filter(favorite => !retainedFavorites.some(entry => entry.id === favorite.id)).forEach(favorite => cloudDeletedFavorites.add(favorite.id));
+          saveCloudTombstones();
+        }
         state.favorites = retainedFavorites;
         persistFavorites();
+      }
+      if (cloudUser) {
+        cloudDeletedItems.add(id);
+        saveCloudTombstones();
       }
       if (state.outfit && Object.values(state.outfit).includes(id)) state.outfit = null;
       persist(); renderAll(); toast('Piece removed from your closet.');
@@ -1638,7 +2161,7 @@
       return state.favorites.findIndex(favorite => favorite.occasion === state.occasion && sameOutfit(favorite.outfit, state.outfit));
     }
     function persistFavorites() {
-      try { localStorage.setItem(FAVORITES_KEY, JSON.stringify(state.favorites)); return true; }
+      try { localStorage.setItem(FAVORITES_KEY, JSON.stringify(state.favorites)); scheduleCloudSync(); return true; }
       catch { toast('Could not save your favorite outfits on this device.'); return false; }
     }
     function toggleFavorite() {
@@ -1646,8 +2169,10 @@
       const previousFavorites = state.favorites;
       const index = currentFavoriteIndex();
       if (index >= 0) {
+        const removedFavoriteId = state.favorites[index].id;
         state.favorites = state.favorites.filter((favorite, favoriteIndex) => favoriteIndex !== index);
         if (!persistFavorites()) { state.favorites = previousFavorites; return; }
+        if (cloudUser) { cloudDeletedFavorites.add(removedFavoriteId); saveCloudTombstones(); scheduleCloudSync(); }
         toast('Removed from favorite outfits.');
       } else {
         const pieces = ['top', 'bottom', 'jacket'].map(key => state.outfit[key] && state.items.find(item => item.id === state.outfit[key])).filter(Boolean);
@@ -1670,6 +2195,7 @@
         const previousFavorites = state.favorites;
         state.favorites = state.favorites.filter(favorite => favorite.id !== remove.dataset.removeFavorite);
         if (!persistFavorites()) { state.favorites = previousFavorites; return; }
+        if (cloudUser) { cloudDeletedFavorites.add(remove.dataset.removeFavorite); saveCloudTombstones(); scheduleCloudSync(); }
         renderFavorites();
         updateFavoriteButton();
         toast('Removed from favorite outfits.');

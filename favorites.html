@@ -35,12 +35,17 @@
       <footer class="page-footer"><a href="./privacy-policy.html" target="_blank" rel="noopener">Privacy Policy</a></footer>
     </main>
   </div>
+  <script src="./supabase-config.js"></script>
   <script>
     const ITEMS_KEY = 'closet-studio-items-v1';
     const FAVORITES_KEY = 'closet-studio-favorite-outfits-v1';
     const APPEARANCE_KEY = 'closet-studio-appearance-v1';
     const PRIVACY_KEY = 'closet-studio-privacy-consent';
-    const PRIVACY_VERSION = '2026-11-14-9';
+    const PRIVACY_VERSION = '2026-11-16-15';
+    const CLOUD_TABLE = 'closet_studio_sync';
+    const CLOUD_PHOTO_BUCKET = 'closet-studio-photos';
+    const SUPABASE_MODULE_URL = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    const CLOUD_DELETED_FAVORITES_KEY = 'closet-studio-cloud-deleted-favorites-v1';
     const PALETTES = {
       rose: '#fff6fa',
       lavender: '#f8f5fc',
@@ -82,7 +87,7 @@
       status.hidden = !message;
     }
 
-    function loadSavedData() {
+    async function loadSavedData() {
       try {
         const consent = JSON.parse(localStorage.getItem(PRIVACY_KEY));
         if (consent?.version !== PRIVACY_VERSION) {
@@ -97,9 +102,56 @@
         items = Array.isArray(savedItems) ? savedItems : [];
         favorites = Array.isArray(savedFavorites) ? savedFavorites.filter(entry => entry?.id && entry?.outfit?.top) : [];
         renderFavorites();
+        await syncFavoritesFromCloud();
+        applyAppearance();
+        renderFavorites();
       } catch {
-        setStatus('Could not read your saved outfits from this device. Check that site storage is available.');
+        setStatus('Could not load saved outfits or refresh your cloud closet. Check your connection and storage settings.');
       }
+    }
+    async function syncFavoritesFromCloud() {
+      const config = window.CLOSET_STUDIO_SUPABASE_CONFIG;
+      if (!config || !config.url || !config.publishableKey) return;
+      const { createClient } = await import(SUPABASE_MODULE_URL);
+      const client = createClient(config.url, config.publishableKey, {
+        auth: { flowType: 'pkce', autoRefreshToken: true, persistSession: true, detectSessionInUrl: true }
+      });
+      const { data: sessionData, error: sessionError } = await client.auth.getSession();
+      if (sessionError) throw sessionError;
+      const user = sessionData.session?.user;
+      if (!user) return;
+      const { data: row, error } = await client.from(CLOUD_TABLE)
+        .select('payload')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (error) throw error;
+      if (!row?.payload) return;
+      const payload = row.payload;
+      if (payload.version !== 1 || !Array.isArray(payload.items) || !Array.isArray(payload.favorites)) {
+        throw new Error('The saved cloud closet has an unsupported format.');
+      }
+      const paths = [...new Set(payload.items.map(item => item?.imagePath).filter(Boolean))];
+      if (paths.some(path => typeof path !== 'string' || path.split('/').length !== 2 || path.split('/')[0] !== user.id)) {
+        throw new Error('The cloud closet contains an invalid photo path.');
+      }
+      const signedImages = new Map();
+      if (paths.length) {
+        const { data, error: imageError } = await client.storage.from(CLOUD_PHOTO_BUCKET).createSignedUrls(paths, 60 * 60 * 24 * 7);
+        if (imageError) throw imageError;
+        (data || []).forEach(image => {
+          if (image.path && image.signedUrl) signedImages.set(image.path, image.signedUrl);
+        });
+        if (signedImages.size !== paths.length) throw new Error('Could not access every saved wardrobe photo.');
+      }
+      items = payload.items.map(item => ({
+        ...item,
+        image: item.imagePath ? signedImages.get(item.imagePath) : item.imageUrl || null,
+        sample: false
+      }));
+      favorites = payload.favorites;
+      localStorage.setItem(ITEMS_KEY, JSON.stringify(items));
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+      if (payload.appearance) localStorage.setItem(APPEARANCE_KEY, JSON.stringify(payload.appearance));
     }
 
     function createElement(tag, className, text) {
@@ -197,6 +249,54 @@
       }
       setStatus('');
       renderFavorites();
+      void syncFavoriteRemoval(id).catch(error => {
+        console.error('Could not sync this favorite removal.', error);
+        setStatus(`Removed on this device, but cloud sync failed: ${error.message}`);
+      });
+    }
+    async function syncFavoriteRemoval(id) {
+      const config = window.CLOSET_STUDIO_SUPABASE_CONFIG;
+      if (!config?.url || !config?.publishableKey) return;
+      const { createClient } = await import(SUPABASE_MODULE_URL);
+      const client = createClient(config.url, config.publishableKey, {
+        auth: { flowType: 'pkce', autoRefreshToken: true, persistSession: true, detectSessionInUrl: true }
+      });
+      const { data: sessionData, error: sessionError } = await client.auth.getSession();
+      if (sessionError) throw sessionError;
+      const user = sessionData.session?.user;
+      if (!user) return;
+      const { data: row, error } = await client.from(CLOUD_TABLE)
+        .select('payload,revision')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (error) throw error;
+      if (!row?.payload) return;
+      const deletedKey = `${CLOUD_DELETED_FAVORITES_KEY}:${user.id}`;
+      const deleted = new Set(JSON.parse(localStorage.getItem(deletedKey) || '[]'));
+      deleted.add(id);
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const payload = { ...row.payload, favorites: favorites.filter(entry => entry.id !== id), deletedFavoriteIds: [...new Set([...(row.payload.deletedFavoriteIds || []), ...deleted])] };
+        const { data: updated, error: updateError } = await client.from(CLOUD_TABLE)
+          .update({ payload, revision: Number(row.revision) + 1, updated_at: new Date().toISOString() })
+          .eq('user_id', user.id)
+          .eq('revision', Number(row.revision))
+          .select('revision')
+          .maybeSingle();
+        if (updateError) throw updateError;
+        if (updated) {
+          localStorage.setItem(deletedKey, JSON.stringify([...deleted]));
+          return;
+        }
+        const { data: fresh, error: readError } = await client.from(CLOUD_TABLE)
+          .select('payload,revision')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (readError) throw readError;
+        if (!fresh) return;
+        row.payload = fresh.payload;
+        row.revision = fresh.revision;
+      }
+      throw new Error('The cloud closet changed on another device repeatedly. Try again.');
     }
 
     applyAppearance();

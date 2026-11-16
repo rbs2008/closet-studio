@@ -36,9 +36,9 @@
   <main>
     <div class="eyebrow">Your clothes stay yours</div>
     <h1>Privacy Policy</h1>
-    <p class="updated">Effective date: November 15, 2026 · Version 14</p>
+    <p class="updated">Effective date: November 16, 2026 · Version 15</p>
     <aside class="release-note"><strong>App Store setup required:</strong> Publish this policy at a publicly accessible URL and use that URL in App Store Connect before submitting the app.</aside>
-    <div class="summary"><strong>The short version:</strong> Your selected photo is compressed and analyzed for clothing type and color on this device. On desktop, the app may also remove the background and crop the garment; on phones, it saves a compressed copy without running background removal for reliability. Closet Studio does not send the photo to an image-search service. Models and code are downloaded separately when needed. HEIC/HEIF photos may require an additional converter download.</div>
+    <div class="summary"><strong>The short version:</strong> Photos are prepared and analyzed on your device. If you create an account and sign in, Closet Studio uploads saved compressed clothing photos, wardrobe details, favorites, and preferences to the private Supabase project configured for the app so you can sync between devices. The app does not send photos to an image-search service.</div>
 
     <section>
       <h2>Who this policy covers</h2>
@@ -49,23 +49,24 @@
       <h2>Information stored on your device</h2>
       <p>When you add a clothing item, the app stores the information needed to show and organize it:</p>
       <ul>
-        <li>The clothing photo you select. The app resizes the image on your device before saving it.</li>
+        <li>The compressed clothing photo you select. It is processed on your device and, when you are signed in, stored in the private cloud project configured for Closet Studio.</li>
         <li>Any previously saved online image links remain on their original websites and are loaded from there when displayed.</li>
         <li>The item name, clothing type suggested by an on-device image classifier, color, weather or season tags, and occasion tags. You can change the name and type. Occasion tags are suggested from the item name and type when adding a piece.</li>
         <li>Your favorite outfit selections, which refer to the clothing items saved in your wardrobe and include their names, types, and colors as a local preview.</li>
         <li>Your appearance preferences, including theme, color palette, and layout spacing.</li>
         <li>Your app preferences, including default outfit occasion, color-matching style, temperature unit, and wardrobe season filter.</li>
         <li>A color estimate sampled from the image, which is processed on your device and can be changed by you.</li>
-        <li>If you choose to create a profile, your name, email address, and profile creation time. This device-only profile has no password, email verification, online sign-in, or cross-device sync.</li>
+        <li>If you create an account, your name and email address are used by Supabase Auth for email/password sign-in. Account credentials are handled by Supabase; Closet Studio does not receive or store your password.</li>
+        <li>Your wardrobe details, compressed photos, favorites, appearance, and preferences are synced to your account's private cloud storage when signed in and online.</li>
         <li>Your temporary temperature entry and generated outfit while the app is open. These are not added to the saved wardrobe.</li>
         <li>A local record that you accepted this policy, including its version and acceptance time, so the app can remember your choice.</li>
       </ul>
-      <p>Wardrobe entries, the optional profile, photos, and the acceptance record are stored in local browser storage on the device running the app. They are not uploaded to an online account. Previously saved online image links may cause the browser to request an image from its original host, which may receive your IP address and normal request metadata. Sample wardrobe items may appear when the app has no saved wardrobe data.</p>
+      <p>A local copy is stored in browser storage on the device running the app. After account sign-in, wardrobe data and compressed photos are also stored in the Supabase project configured for the app and made available to that account on other devices. Supabase receives normal service request information, such as IP address and request metadata. Previously saved online image links may also contact their original image hosts when displayed. Sample wardrobe items may appear when the app has no saved wardrobe data.</p>
     </section>
 
     <section>
       <h2>Photos and device permissions</h2>
-      <p>You choose which image to add using the file or photo picker provided by your device. The app only processes the image you select and does not scan your photo library or access other images. Closet Studio compresses the photo and samples its color and classifies its clothing type on your device. On desktop, the app may also run background removal and crop the garment. On phones, it skips background removal and saves a compressed copy to avoid model-related upload failures. The selected photo is not sent to an image-search service.</p>
+      <p>You choose which image to add using the file or photo picker provided by your device. The app only processes the image you select and does not scan your photo library or access other images. Closet Studio compresses the photo and samples its color and classifies its clothing type on your device. On desktop, it may also run background removal and crop the garment. On phones, it skips background removal for reliability. The original selected photo is not sent to an image-search service. If you sign in, the resulting saved compressed image is uploaded to your private Supabase storage bucket to enable cross-device access.</p>
     </section>
 
     <section>
@@ -80,19 +81,19 @@
 
     <section>
       <h2>Sharing, advertising, and tracking</h2>
-      <p>The app does not include advertising, in-app analytics, or cross-app tracking. Closet Studio does not upload your wardrobe, profile, or newly selected clothing photos. Image resizing, color sampling, and clothing-type classification happen on your device; desktop background removal and cropping also happen locally when used. Previously saved online image links may still contact their original image hosts when displayed. The device operating system and app distribution platform may process information under their own privacy terms.</p>
+      <p>The app does not include advertising, in-app analytics, or cross-app tracking. Image resizing, color sampling, clothing-type classification, and optional desktop background removal happen on your device. If you sign in, the saved compressed photos and wardrobe information are sent to the Supabase project configured for Closet Studio and stored in private, account-restricted storage. Previously saved external image links may contact their original image hosts when displayed. Supabase and the device operating system may process information under their own privacy terms.</p>
     </section>
 
     <section>
       <h2>Retention and deletion</h2>
-      <p>You can delete individual wardrobe items in the app; favorite outfits that include a deleted item are also removed. Deleting your device-only account removes its name and email as well as all saved wardrobe items, photos, and favorite outfits from this device. The separate privacy-policy acceptance record remains. You can also clear the app's data using your device or browser settings; this removes the local policy acceptance record and the app will ask you to review the policy again next time. You can open Privacy &amp; consent in the app and decline to withdraw the saved acceptance; the wardrobe remains locked until you agree again.</p>
+      <p>You can delete individual wardrobe items in the app; signed-in changes sync to your cloud closet. Signing out clears the synced local cache from that device but does not delete the cloud copy. The current app does not provide self-service cloud-account deletion. To delete cloud photos, wardrobe data, and the Supabase Auth account, use the Supabase dashboard for the configured project or contact the publisher for help. The separate privacy-policy acceptance record remains on each device. You can also clear the app's data using device or browser settings; the app may ask you to review the policy again next time.</p>
       <p>Uninstalling the app or clearing its data may remove locally stored items. The exact behavior depends on how the app is installed and your device settings. Closet Studio cannot recover data deleted from the device.</p>
-      <p>The Data settings let you export a local backup file or import one. A backup may include clothing photos and optional profile information; keep it private and delete downloaded backups separately when they are no longer needed. Import replaces the current local wardrobe and settings. Closet Studio does not upload backup files. Deleting all local data leaves the separate policy-acceptance record in place.</p>
+      <p>The Data settings let you export a backup file or import one. A backup may include clothing photos and profile information; keep it private and delete downloaded backups separately when they are no longer needed. Import replaces the current local wardrobe and settings and syncs those changes if you are signed in. Deleting all local data leaves the separate policy-acceptance record in place.</p>
     </section>
 
     <section>
       <h2>Security</h2>
-      <p>Closet Studio does not create an online account or sync your wardrobe. The optional local profile is not used to authenticate a login. Local browser storage is not encrypted by Closet Studio itself. Secure your device and user profile. Photos selected for new wardrobe items are processed locally and are not sent to an image-search provider.</p>
+      <p>Supabase Auth handles account passwords, and database row-level security and private storage policies restrict cloud records and photos to their owner. The browser app uses only the project's public publishable key; it does not contain a service-role key. Local browser storage is not encrypted by Closet Studio itself. Protect your device and account password. Photos are processed locally and are not sent to an image-search provider, but saved compressed photos are uploaded to the configured cloud project when you are signed in.</p>
     </section>
 
     <section>

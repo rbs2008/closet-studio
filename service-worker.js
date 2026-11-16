@@ -1,4 +1,4 @@
-const CACHE_NAME = 'closet-studio-shell-v22';
+const CACHE_NAME = 'closet-studio-shell-v23';
 const APP_SHELL = [
   './',
   './index.html',
@@ -31,6 +31,10 @@ self.addEventListener('fetch', event => {
   const request = event.request;
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
+  if (url.pathname.endsWith('/supabase-config.js')) {
+    event.respondWith(fetch(request, { cache: 'no-store' }));
+    return;
+  }
 
   event.respondWith((async () => {
     const cached = await caches.match(request);
